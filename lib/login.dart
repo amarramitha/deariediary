@@ -16,13 +16,16 @@ class Login extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.pink[100], // Light pink background
         ),
-        child: SingleChildScrollView(
-          // Add this widget to enable scrolling
-          child: Center(
+        child: Center(
+          // This will center everything inside the body
+          child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Center the content vertically
+                crossAxisAlignment: CrossAxisAlignment
+                    .center, // Center the content horizontally
                 children: [
                   // Logo
                   Image.asset(
