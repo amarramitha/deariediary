@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
@@ -33,6 +34,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   File? _imageFile;
   String? _audioFilePath;
   FlutterSoundRecorder? _recorder;
+  DateTime selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
 
   DateTime _selectedDate = DateTime.now();
@@ -92,7 +94,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     try {
       await _recorder!.startRecorder(toFile: 'audio.m4a');
       setState(() {
-        _audioFilePath = null;
+        _audioFilePath = null; // Reset audio file path
       });
     } catch (e) {
       print("Error starting recorder: $e");
@@ -111,12 +113,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   }
 
   Future<void> _selectMood(BuildContext context) async {
-    // Show dialog instead of bottom sheet
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Bagaimana moodmu hari ini?',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text('Bagaimana moodmu hari ini?'),
         content: Wrap(
           spacing: 16,
           children: moods.map((mood) {
@@ -125,7 +125,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 setState(() {
                   _mood = mood['label'];
                 });
-                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context);
               },
               child: Column(
                 children: [
@@ -141,24 +141,30 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
+    final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+      lastDate: DateTime(2025),
     );
-    if (pickedDate != null && pickedDate != _selectedDate) {
+
+    if (picked != null && picked != selectedDate) {
       setState(() {
-        _selectedDate = pickedDate;
+        selectedDate = picked; // Update the selected date
       });
     }
   }
 
   Future<void> saveDiaryEntry() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return; // Validate form fields
+    setState(() => _isLoading = true); // Show loading indicator
+
     try {
+      // Use selectedDate directly as it is already a DateTime
+      DateTime selectedDateToSave = selectedDate; // This is already DateTime
+
       if (widget.entryId == null) {
+        // Adding new entry
         await diaryController.addDiaryEntry(
           context,
           title: _titleController.text,
@@ -166,8 +172,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           mood: _mood ?? '',
           image: _imageFile,
           audioFilePath: _audioFilePath,
+          date: selectedDateToSave, // Pass as DateTime
         );
       } else {
+        // Updating existing entry
         await diaryController.updateDiaryEntry(
           entryId: widget.entryId!,
           title: _titleController.text,
@@ -175,16 +183,19 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           mood: _mood ?? '',
           image: _imageFile,
           audioFilePath: _audioFilePath,
+          date: selectedDateToSave, // Pass as DateTime
           context: context,
         );
       }
-      Get.offAll(() => DashboardDiary());
+
+      Get.offAll(() => DashboardDiary()); // Navigate to Dashboard after saving
     } catch (e) {
+      // Display error message if saving fails
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save diary entry: $e')),
       );
     } finally {
-      setState(() => _isLoading = false);
+      setState(() => _isLoading = false); // Hide loading indicator
     }
   }
 
@@ -205,104 +216,103 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment
-                    .spaceBetween, // Spreads the elements to the edges
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => _selectDate(context),
-                        icon: Icon(Icons.calendar_today),
-                      ),
-                      Text(
-                        ' ${DateFormat('yMMMd').format(_selectedDate)}',
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      if (_mood != null) Text('Mood: $_mood'),
-                      IconButton(
-                        onPressed: () => _selectMood(context),
-                        icon: Icon(Icons.emoji_emotions),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Card(
-                color: Colors.pink[50], // Card color
-                margin: EdgeInsets.zero,
-                child: Container(
-                  width: double.infinity,
-                  height:
-                      MediaQuery.of(context).size.height, // Full screen height
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Colors
-                        .transparent, // Transparent background for the container
-                    borderRadius:
-                        BorderRadius.circular(10), // Rounded corners (optional)
-                  ),
-                  child: Column(
-                    children: [
-                      // Title TextFormField
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          labelText: 'Title',
-                          border: InputBorder
-                              .none, // Remove the border under the text field
+          child: Form(
+            key: _formKey, // Add form key here
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => _selectDate(context),
+                          icon: Icon(Icons.calendar_today),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a title';
-                          }
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 30),
-
-                      // Content TextFormField
-                      Expanded(
-                        child: TextFormField(
-                          controller: _contentController,
+                        Text(
+                          DateFormat('yMMMd').format(_selectedDate),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        if (_mood != null) Text('Mood: $_mood'),
+                        IconButton(
+                          onPressed: () => _selectMood(context),
+                          icon: Icon(Icons.emoji_emotions),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Card(
+                  color: Colors.pink[50],
+                  margin: EdgeInsets.zero,
+                  child: Container(
+                    width: double.infinity,
+                    height: MediaQuery.of(context).size.height,
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        // Title TextFormField
+                        TextFormField(
+                          controller: _titleController,
                           decoration: InputDecoration(
-                            labelText: 'Content',
+                            labelText: 'Title',
                             border: InputBorder.none,
                           ),
-                          maxLines: null, // Allows for unlimited lines
-                          keyboardType: TextInputType.multiline,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter a title';
+                            }
+                            return null;
+                          },
                         ),
-                      ),
+                        SizedBox(height: 30),
 
-                      // Buttons Row (Image and Microphone buttons)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: _pickImage,
-                              icon: Icon(Icons.image),
-                              label: Text(''),
+                        // Content TextFormField
+                        Expanded(
+                          child: TextFormField(
+                            controller: _contentController,
+                            decoration: InputDecoration(
+                              labelText: 'Content',
+                              border: InputBorder.none,
                             ),
-                            ElevatedButton.icon(
-                              onPressed: _startRecording,
-                              icon: Icon(Icons.mic),
-                              label: Text(''),
-                            ),
-                          ],
+                            maxLines: null,
+                            keyboardType: TextInputType.multiline,
+                          ),
                         ),
-                      ),
-                    ],
+
+                        // Buttons Row (Image and Microphone buttons)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _pickImage,
+                                icon: Icon(Icons.image),
+                                label: Text(''),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: _startRecording,
+                                icon: Icon(Icons.mic),
+                                label: Text('Record'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_isLoading) CircularProgressIndicator(),
+                      ],
+                    ),
                   ),
                 ),
-              )
-            ],
+              ],
+            ),
           ),
         ),
       ),
