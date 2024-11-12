@@ -5,9 +5,40 @@ import 'add_diary.dart';
 import 'package:deariediary/controller/diary_controller.dart';
 import 'diary_detail.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class DiaryPage extends StatelessWidget {
   final DiaryController diaryController = Get.put(DiaryController());
+
+  // Map of mood labels to emojis
+  final Map<String, String> moodEmojis = {
+    'Happy': '😊',
+    'Sad': '😢',
+    'Angry': '😠',
+    'Loved': '😍',
+    'Disappointed': '😞',
+    'Excited': '😁',
+    'Relaxed': '😌',
+    'Stressed': '😖',
+    'Crying': '😭',
+    'Confused': '😕',
+    'neutral': '😐', // Default emoji for neutral mood
+  };
+
+  // Define color for each mood emoji
+  final Map<String, Color> emojiColors = {
+    'Happy': Colors.yellow,
+    'Sad': Colors.blue,
+    'Angry': Colors.red,
+    'Loved': Colors.pink,
+    'Disappointed': Colors.grey,
+    'Excited': Colors.orange,
+    'Relaxed': Colors.green,
+    'Stressed': Colors.purple,
+    'Crying': Colors.blueAccent,
+    'Confused': Colors.amber,
+    'neutral': Colors.black87,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -42,48 +73,21 @@ class DiaryPage extends StatelessWidget {
           itemCount: diaryController.diaryEntries.length,
           itemBuilder: (context, index) {
             final entry = diaryController.diaryEntries[index];
-            final timestamp = entry['timestamp'];
 
-            final dateTime = (timestamp != null && timestamp is Timestamp)
-                ? timestamp.toDate()
-                : DateTime.now();
-
-            final formattedDay = DateFormat('d').format(dateTime);
-            final formattedMonth = DateFormat('MMM').format(dateTime);
+            final date = entry['date'] as DateTime? ?? DateTime.now();
+            final formattedDay = DateFormat('d').format(date);
+            final formattedMonth = DateFormat('MMM').format(date);
 
             String mood = entry['mood'] ?? 'neutral';
-            Icon moodIcon;
-            Color moodColor;
+            String moodEmoji = moodEmojis[mood] ?? moodEmojis['neutral']!;
+            Color emojiColor = emojiColors[mood] ?? emojiColors['neutral']!;
 
-            // Mood icons and colors
-            switch (mood) {
-              case 'happy':
-                moodIcon =
-                    Icon(Icons.sentiment_very_satisfied, color: Colors.yellow);
-                moodColor = Colors.green;
-                break;
-              case 'neutral':
-                moodIcon = Icon(Icons.sentiment_neutral, color: Colors.orange);
-                moodColor = Colors.blue;
-                break;
-              case 'sad':
-                moodIcon =
-                    Icon(Icons.sentiment_dissatisfied, color: Colors.blue);
-                moodColor = Colors.red;
-                break;
-              default:
-                moodIcon = Icon(Icons.sentiment_neutral, color: Colors.grey);
-                moodColor = Colors.grey;
-                break;
-            }
-
-            // Return the diary entry item as a GestureDetector to navigate to the detail page
             return GestureDetector(
               onTap: () {
                 Get.to(() => DiaryDetailPage(
                       title: entry['title'] ?? 'No Title',
                       content: entry['content'] ?? 'No Content',
-                      timestamp: dateTime,
+                      timestamp: date,
                       mood: entry['mood'] ?? 'No Mood',
                       imageUrl: entry['image'] ?? '',
                       entryId: entry['id'] ?? '',
@@ -101,7 +105,6 @@ class DiaryPage extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Display the day and month
                       Column(
                         children: [
                           Text(
@@ -122,7 +125,6 @@ class DiaryPage extends StatelessWidget {
                         ],
                       ),
                       SizedBox(width: 16),
-                      // Display the title and content of the entry
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,8 +152,16 @@ class DiaryPage extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // Display the mood icon
-                      moodIcon,
+                      RichText(
+                          text: TextSpan(
+                        text: moodEmoji,
+                        style: GoogleFonts.notoColorEmoji(
+                          textStyle: TextStyle(
+                            fontSize: 24,
+                            color: emojiColor, // Color based on the mood
+                          ),
+                        ),
+                      )),
                     ],
                   ),
                 ),
