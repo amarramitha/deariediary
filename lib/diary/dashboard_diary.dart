@@ -13,10 +13,10 @@ class DashboardDiary extends StatelessWidget {
       Get.put(DashboardController());
 
   final List<Widget> _pages = [
-    DiaryPage(), // DiaryEntriesPage as the first page
-    PostFeedPage(), // Post feed page
-    MoodTrackerPage(), // Mood tracker page
-    ProfilePage(), // Profile page
+    DiaryPage(),
+    PostFeedPage(),
+    MoodTrackerPage(),
+    ProfilePage(), // Mengirimkan name ke ProfilePage
   ];
 
   final List<String> _titles = [
@@ -61,16 +61,15 @@ class DashboardDiary extends StatelessWidget {
         );
       }),
       floatingActionButton: Obx(() {
-        // Show FAB only on the Post Feed page
         if (dashboardController.selectedIndex.value == 1) {
           return FloatingActionButton(
             onPressed: () {
-              Get.to(AddPostPage()); // Navigate to the post creation page
+              Get.to(AddPostPage()); // Menavigasi ke halaman pembuatan postingan
             },
             child: Icon(Icons.add),
           );
         }
-        return SizedBox.shrink(); // Return empty if not on Post Feed
+        return SizedBox.shrink(); // Tidak menampilkan FAB jika bukan di halaman Post Feed
       }),
     );
   }
