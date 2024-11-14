@@ -73,19 +73,31 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   Future<void> _pickImage() async {
     if (kIsWeb) {
+      // Image picking for Web (using ImagePickerWeb)
       final pickedFile = await ImagePickerWeb.getImageAsFile();
       if (pickedFile != null) {
         setState(() {
           _imageFile = pickedFile as File?;
         });
+
+        // Upload the image to Firebase Storage
+        if (_imageFile != null) {
+          await diaryController.uploadImageToFirebase(_imageFile!);
+        }
       }
     } else {
+      // Image picking for mobile (using ImagePicker)
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
           _imageFile = File(pickedFile.path);
         });
+
+        // Upload the image to Firebase Storage
+        if (_imageFile != null) {
+          await diaryController.uploadImageToFirebase(_imageFile!);
+        }
       }
     }
   }
@@ -129,7 +141,9 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
               },
               child: Column(
                 children: [
-                  Text(mood['emoji']!, style: TextStyle(fontSize: 30)),
+                  Text(mood['emoji']!,
+                      style: const TextStyle(
+                          fontSize: 30, fontFamily: 'NotoColorEmoji')),
                   Text(mood['label']!, style: TextStyle(fontSize: 12)),
                 ],
               ),
@@ -282,31 +296,31 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                               labelText: 'Content',
                               border: InputBorder.none,
                             ),
-                            maxLines: null,
                             keyboardType: TextInputType.multiline,
+                            maxLines: null,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter some content';
+                              }
+                              return null;
+                            },
                           ),
                         ),
 
-                        // Buttons Row (Image and Microphone buttons)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              ElevatedButton.icon(
+                        // Add Image Button
+                        SizedBox(height: 20),
+                        _imageFile == null
+                            ? IconButton(
+                                icon: Icon(Icons.add_a_photo),
                                 onPressed: _pickImage,
-                                icon: Icon(Icons.image),
-                                label: Text(''),
+                                tooltip: 'Pick an image',
+                              )
+                            : Image.file(
+                                _imageFile!,
+                                height: 100, // Adjust the image size as needed
+                                width: 100,
+                                fit: BoxFit.cover,
                               ),
-                              ElevatedButton.icon(
-                                onPressed: _startRecording,
-                                icon: Icon(Icons.mic),
-                                label: Text('Record'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_isLoading) CircularProgressIndicator(),
                       ],
                     ),
                   ),

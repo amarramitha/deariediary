@@ -52,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'Dearie Diary',
               style: TextStyle(
-                fontFamily: 'Marck',
+                fontFamily: 'Marckscript',
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: const Color.fromARGB(

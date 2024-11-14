@@ -158,7 +158,6 @@ class DiaryPage extends StatelessWidget {
                         style: GoogleFonts.notoColorEmoji(
                           textStyle: TextStyle(
                             fontSize: 24,
-                            color: emojiColor, // Color based on the mood
                           ),
                         ),
                       )),

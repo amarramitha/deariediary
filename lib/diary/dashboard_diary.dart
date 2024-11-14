@@ -34,7 +34,7 @@ class DashboardDiary extends StatelessWidget {
         child: Obx(() {
           return AppBar(
             title: Text(_titles[dashboardController.selectedIndex.value]),
-            backgroundColor: Colors.pink[300],
+            backgroundColor: const Color.fromARGB(255, 255, 185, 210),
           );
         }),
       ),

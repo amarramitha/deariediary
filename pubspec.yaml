@@ -49,6 +49,7 @@ dependencies:
 
   table_calendar: ^3.0.2
   google_fonts: ^6.2.1
+  path_provider: ^2.1.5
 
 
 dev_dependencies:
@@ -79,7 +80,7 @@ flutter:
   #   - images/a_dot_ham.jpeg
 
 fonts:
-  - family: Marck
+  - family: Marckscript
     fonts:
     - asset: fonts/MarckScript-Regular.ttf
   # An image asset can refer to one or more resolution-specific "variants", see
