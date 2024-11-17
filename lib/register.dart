@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'login.dart';
 
@@ -10,6 +11,7 @@ class Register extends StatefulWidget {
 
 class _RegisterState extends State<Register> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -18,16 +20,38 @@ class _RegisterState extends State<Register> {
   // Register user with email, password, and name
   Future<void> registerWithEmailPassword() async {
     try {
+      // Create user with email and password
       UserCredential userCredential =
           await _auth.createUserWithEmailAndPassword(
         email: _emailController.text,
         password: _passwordController.text,
       );
 
+      // Get the user object
       User? user = userCredential.user;
-      await user?.updateDisplayName(_nameController.text);
 
-      Navigator.pop(context);
+      if (user != null) {
+        // Update the user's display name
+        await user.updateDisplayName(_nameController.text);
+
+        // Save the user's data to Firestore
+        await _firestore.collection('users').doc(user.uid).set({
+          'name': _nameController.text,
+          'email': _emailController.text,
+          'bio':
+              '', // You can set the initial bio as an empty string or provide default
+        });
+
+        // Show a success alert after registration
+        Get.snackbar(
+            'Registration Success', 'Welcome, ${_nameController.text}!',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white);
+
+        // Navigate to the login screen using GetX
+        Get.off(() => Login()); // Replace Navigator.pop() with Get.off()
+      }
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
@@ -123,6 +147,14 @@ class _RegisterState extends State<Register> {
                   ),
                   SizedBox(height: 16),
 
+                  // Error Message Display
+                  if (errorMessage.isNotEmpty)
+                    Text(
+                      errorMessage,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  SizedBox(height: 16),
+
                   // Login Option
                   Text(
                     "Sudah punya akun?",
@@ -130,7 +162,9 @@ class _RegisterState extends State<Register> {
                   ),
                   TextButton(
                     onPressed: () {
-                      Get.to(() => Login());
+                      // Navigate to the login screen using GetX
+                      Get.to(() =>
+                          Login()); // Use Get.to() to navigate to the login screen
                     },
                     child: Text(
                       "Login",

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -16,10 +17,11 @@ class EditProfile extends StatefulWidget {
 
 class _EditProfileState extends State<EditProfile> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ImagePicker _picker = ImagePicker();
   File? _imageFile;
-  TextEditingController _lastNameController = TextEditingController();
   TextEditingController _bioController = TextEditingController();
+  TextEditingController _nameController = TextEditingController();
 
   @override
   void initState() {
@@ -31,9 +33,19 @@ class _EditProfileState extends State<EditProfile> {
   Future<void> _loadUserData() async {
     User? user = _auth.currentUser;
     if (user != null) {
-      setState(() {
-        _lastNameController.text = user.displayName?.split(' ').last ?? '';
-      });
+      // Fetch data from Firestore
+      final docSnapshot =
+          await _firestore.collection('users').doc(user.uid).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        if (data != null) {
+          setState(() {
+            _nameController.text =
+                data['name'] ?? ''; // Ensure name is retrieved here
+            _bioController.text = data['bio'] ?? ''; // Ensure bio is retrieved
+          });
+        }
+      }
     }
   }
 
@@ -66,14 +78,23 @@ class _EditProfileState extends State<EditProfile> {
       await storageRef.putFile(_imageFile!);
       final downloadURL = await storageRef.getDownloadURL();
       await user.updatePhotoURL(downloadURL);
+      await _firestore.collection('users').doc(user.uid).update({
+        'photoURL': downloadURL,
+      });
     }
   }
 
-  Future<void> _updateLastName() async {
+  Future<void> _updateUserData() async {
     User? user = _auth.currentUser;
-    if (user != null && _lastNameController.text.isNotEmpty) {
-      await user.updateDisplayName(
-          '${user.displayName?.split(' ').first} ${_lastNameController.text}');
+    if (user != null) {
+      final fullName = _nameController.text; // Use the single name field
+      await user.updateDisplayName(fullName);
+
+      // Update Firestore data
+      await _firestore.collection('users').doc(user.uid).set({
+        'name': _nameController.text, // Ensure this is properly set
+        'bio': _bioController.text,
+      }, SetOptions(merge: true)); // Merges with existing data
     }
   }
 
@@ -90,8 +111,7 @@ class _EditProfileState extends State<EditProfile> {
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start, // Set alignment to start for text
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: GestureDetector(
@@ -129,21 +149,27 @@ class _EditProfileState extends State<EditProfile> {
             ),
             SizedBox(height: 20),
             Text(
-              'Nama Belakang',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              'Nama',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jakarta'),
             ),
             SizedBox(height: 4),
             TextField(
-              controller: _lastNameController,
+              controller: _nameController,
               decoration: InputDecoration(
-                hintText: 'Masukkan Nama Belakang',
+                hintText: 'Masukkan Nama',
                 border: OutlineInputBorder(),
               ),
             ),
             SizedBox(height: 20),
             Text(
-              'Perkenalan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              'Bio',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jakarta'),
             ),
             SizedBox(height: 4),
             TextField(
@@ -157,7 +183,10 @@ class _EditProfileState extends State<EditProfile> {
             SizedBox(height: 30),
             Text(
               'Email',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jakarta'),
             ),
             SizedBox(height: 4),
             Text(
@@ -168,12 +197,9 @@ class _EditProfileState extends State<EditProfile> {
             Center(
               child: ElevatedButton(
                 onPressed: () async {
-                  widget.onBioUpdated(
-                      _bioController.text); // Notify parent widget
-                  await _updateLastName();
+                  widget.onBioUpdated(_bioController.text);
+                  await _updateUserData();
                   await _uploadProfilePicture();
-                  await user
-                      ?.updateDisplayName(_bioController.text); // Update bio
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(

@@ -57,12 +57,6 @@ class DiaryPage extends StatelessWidget {
                 Icon(Icons.book_outlined, size: 50, color: Colors.grey),
                 SizedBox(height: 10),
                 Text('No diary entries available.'),
-                ElevatedButton(
-                  onPressed: () {
-                    Get.to(() => AddDiaryPage());
-                  },
-                  child: Text('Add Diary Entry'),
-                ),
               ],
             ),
           );

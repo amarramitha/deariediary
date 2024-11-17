@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MoodTrackerPage extends StatefulWidget {
   @override
@@ -10,9 +11,9 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  Map<DateTime, String> _selectedMoods = {}; // Data emoji
-  DateTime _selectedDay = DateTime.now(); // Tanggal dipilih
-  DateTime _focusedDay = DateTime.now(); // Tanggal fokus
+  Map<DateTime, String> _selectedMoods = {};
+  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
   final List<String> _availableEmojis = [
     '😊',
     '😢',
@@ -32,12 +33,14 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     '🤔',
     '🥱',
     '🥴',
+    '🤑',
+    '😮‍💨',
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadMoodsFromFirestore(); // Load data mood saat aplikasi mulai
+    _loadMoodsFromFirestore();
   }
 
   String? get userId => FirebaseAuth.instance.currentUser?.uid;
@@ -64,9 +67,20 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
 
   Future<void> _addMoodForSelectedDay(String mood) async {
     if (userId == null) return;
+
+    // Memastikan tanggal yang dipilih tidak lebih dari hari ini
+    if (_selectedDay.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Tidak dapat memilih mood untuk tanggal besok.')),
+      );
+      return;
+    }
+
     final String dateKey = DateFormat('yyyy-MM-dd').format(_selectedDay);
 
     try {
+      // Update mood di Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -74,50 +88,62 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
           .doc(dateKey)
           .set({'mood': mood, 'date': _selectedDay});
 
-      setState(() {
-        _selectedMoods[_selectedDay] = mood;
-        _focusedDay = _selectedDay; // Refresh tampilan kalender
-      });
+      // Setelah disimpan, reload mood dari Firestore
+      _loadMoodsFromFirestore();
     } catch (e) {
       print("Error saving mood: $e");
     }
   }
 
   void _showEmojiDialog() {
+    String? existingMood = _getMoodForDate(_selectedDay);
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        double dialogWidth = MediaQuery.of(context).size.width * 0.8;
+        double dialogHeight = MediaQuery.of(context).size.height * 0.4;
+
         return AlertDialog(
-          title: Text("Pilih mood kamu"),
+          title: Text("Pilih atau Edit Mood Kamu"),
           content: Container(
-            height: 230,
+            width: dialogWidth,
+            height: dialogHeight,
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+                crossAxisCount: 4,
                 crossAxisSpacing: 12.0,
                 mainAxisSpacing: 12.0,
               ),
               itemCount: _availableEmojis.length,
               itemBuilder: (context, index) {
+                final emoji = _availableEmojis[index];
+                final isSelected = emoji == existingMood;
+
                 return GestureDetector(
                   onTap: () {
+                    // Segera perbarui mood untuk tanggal yang dipilih
                     setState(() {
-                      // Update emoji langsung di UI
-                      _selectedMoods[_selectedDay] = _availableEmojis[index];
-                      _focusedDay = _selectedDay; // Perbarui tampilan kalender
+                      _selectedMoods[_selectedDay] = emoji;
                     });
-                    _addMoodForSelectedDay(_availableEmojis[index]);
-                    Navigator.of(context).pop(); // Tutup dialog
+
+                    // Simpan ke Firestore
+                    _addMoodForSelectedDay(emoji);
+
+                    // Tutup dialog
+                    Navigator.of(context).pop();
                   },
                   child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     child: Center(
-                      child: Text(
-                        _availableEmojis[index],
-                        style: TextStyle(fontSize: 40),
+                      child: RichText(
+                        text: TextSpan(
+                          text: emoji,
+                          style: GoogleFonts.notoColorEmoji(
+                            textStyle: TextStyle(
+                              fontSize: 40,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -154,7 +180,16 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              _showEmojiDialog();
+              // Tampilkan dialog emoji hanya jika tanggal yang dipilih valid
+              if (!_selectedDay.isAfter(DateTime.now())) {
+                _showEmojiDialog();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text('Belum dapat memilih mood untuk tanggal ini.')),
+                );
+              }
             },
             calendarBuilders: CalendarBuilders(
               defaultBuilder: (context, date, _) => _buildDay(date),
@@ -174,19 +209,34 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     final mood = _getMoodForDate(date);
     return Container(
       decoration: BoxDecoration(
-        color: isToday
-            ? Colors.blueAccent
-            : (isSelected ? Colors.pink[100] : Colors.transparent),
+        color: isSelected
+            ? Colors.pink[100]?.withOpacity(0.5)
+            : (isToday
+                ? Colors.blueAccent.withOpacity(0.3)
+                : Colors.transparent),
         shape: BoxShape.circle,
       ),
       child: Center(
-        child: Text(
-          mood ?? '${date.day}',
-          style: TextStyle(
-            fontSize: mood != null ? 24 : 14,
-            color: isToday || isSelected ? Colors.white : Colors.black,
-          ),
-        ),
+        child: mood != null
+            ? RichText(
+                text: TextSpan(
+                  text: mood,
+                  style: GoogleFonts.notoColorEmoji(
+                    textStyle: TextStyle(
+                      fontSize: 24,
+                      color:
+                          isToday || isSelected ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              )
+            : Text(
+                '${date.day}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isToday || isSelected ? Colors.white : Colors.black,
+                ),
+              ),
       ),
     );
   }

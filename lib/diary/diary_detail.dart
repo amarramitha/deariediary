@@ -45,7 +45,6 @@ class DiaryDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Diary Entry Details"),
         backgroundColor: Colors.pink[50],
         actions: [
           PopupMenuButton<String>(
@@ -148,14 +147,19 @@ class DiaryDetailPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blueAccent,
+                    color: Colors.black,
+                    fontFamily: 'Jakarta',
                   ),
                 ),
                 SizedBox(height: 8),
                 Divider(height: 30, thickness: 1),
                 Text(
                   content,
-                  style: TextStyle(fontSize: 18, height: 1.5),
+                  style: TextStyle(
+                    fontSize: 18,
+                    height: 1.5,
+                    fontFamily: 'Jakarta',
+                  ),
                 ),
                 SizedBox(height: 16),
                 if (imageUrl.isNotEmpty) Image.network(imageUrl),

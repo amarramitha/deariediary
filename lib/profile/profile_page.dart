@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Tambahkan Firestore untuk simpan data
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile.dart';
 import 'dart:async';
 
@@ -12,6 +12,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _quoteOfTheDay = '';
+  String _name = 'Nama Pengguna';
   String _bio = 'Setiap hari memberikan hadiahnya masing-masing.';
 
   final List<String> quotes = [
@@ -26,6 +27,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _quoteOfTheDay = getQuoteOfTheDay();
+    _fetchUserData();
 
     Timer.periodic(Duration(minutes: 1), (timer) {
       if (mounted) {
@@ -41,159 +43,123 @@ class _ProfilePageState extends State<ProfilePage> {
     return quotes[randomIndex % quotes.length];
   }
 
-  Future<String> _getUserName() async {
-    User? user = _auth.currentUser;
-    return user?.displayName ?? 'Nama Pengguna';
-  }
-
-  Future<String> _getUserBio() async {
+  Future<void> _fetchUserData() async {
     User? user = _auth.currentUser;
     if (user != null) {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
+      DocumentSnapshot userData = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-      // Ensure the document exists and contains the 'bio' field
-      if (doc.exists && doc.data() != null) {
-        return doc['bio'] ?? 'Setiap hari memberikan hadiahnya masing-masing.';
-      }
+
+      setState(() {
+        _name = userData['name'] ?? 'Nama Pengguna';
+        _bio = userData['bio'] ??
+            'Setiap hari memberikan hadiahnya masing-masing.';
+      });
     }
-    return 'Setiap hari memberikan hadiahnya masing-masing.';
+  }
+
+  // Method to handle logout
+  Future<void> _logout() async {
+    await _auth.signOut();
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: _getUserName(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            appBar: AppBar(title: Text('Profil')),
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            appBar: AppBar(title: Text('Profil')),
-            body: Center(child: Text('Terjadi kesalahan')),
-          );
-        }
-
-        String name = snapshot.data!;
-
-        return Scaffold(
-          backgroundColor: Colors.pink[50],
-          body: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.grey[300],
-                      child: Icon(Icons.person, size: 40, color: Colors.white),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Jakarta',
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          FutureBuilder<String>(
-                            future: _getUserBio(),
-                            builder: (context, bioSnapshot) {
-                              if (bioSnapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return CircularProgressIndicator();
-                              }
-                              if (bioSnapshot.hasError) {
-                                return Text('Error loading bio');
-                              }
-
-                              _bio = bioSnapshot.data!;
-                              return Text(
-                                _bio,
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontFamily: 'Jakarta',
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditProfile(
-                              bio: _bio,
-                              onBioUpdated: _updateBio,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Icon(Icons.arrow_forward_ios, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 30),
-                Text(
-                  'Statistik Mood Anda (Per Bulan):',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink[300],
-                    fontFamily: 'Jakarta',
-                  ),
-                ),
-                SizedBox(height: 16),
-                _buildMoodChart(),
-                SizedBox(height: 30),
-                _buildQuoteCard(),
-                SizedBox(height: 30),
-                _buildLogoutButton(),
-              ],
-            ),
-          ),
-        );
-      },
+    return Scaffold(
+      backgroundColor: Colors.pink[50],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildProfileHeader(),
+            const SizedBox(height: 30),
+            _buildMoodStatistics(),
+            const SizedBox(height: 30),
+            _buildQuoteCard(),
+            const SizedBox(height: 30),
+            _buildLogoutButton(),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
     );
   }
 
-  void _updateBio(String updatedBio) async {
-    setState(() {
-      _bio = updatedBio;
-    });
-    await _saveBioToDatabase(updatedBio);
+  Widget _buildProfileHeader() {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 40,
+          backgroundColor: Colors.grey[300],
+          child: Icon(Icons.person, size: 40, color: Colors.white),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _name,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Jakarta',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _bio,
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontFamily: 'Jakarta',
+                ),
+              ),
+            ],
+          ),
+        ),
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditProfile(
+                  bio: _bio,
+                  onBioUpdated: _updateBio,
+                ),
+              ),
+            );
+          },
+          child: Icon(Icons.arrow_forward_ios, color: Colors.grey),
+        ),
+      ],
+    );
   }
 
-  Future<void> _saveBioToDatabase(String bio) async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({'bio': bio});
-    }
+  Widget _buildMoodStatistics() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Statistik Mood Anda (Per Bulan):',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.pink[300],
+            fontFamily: 'Jakarta',
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildMoodChart(),
+      ],
+    );
   }
 
   Widget _buildQuoteCard() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -217,7 +183,7 @@ class _ProfilePageState extends State<ProfilePage> {
               fontFamily: 'Jakarta',
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             '"$_quoteOfTheDay"',
             style: TextStyle(
@@ -234,7 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildMoodChart() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -304,7 +270,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 moodEmoji,
                 style: TextStyle(fontSize: 24),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Container(
                 width: 200,
                 height: 20,
@@ -313,8 +279,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: moodLevel / 5,
+                  alignment: Alignment.bottomCenter,
+                  widthFactor: moodLevel / 5.0,
                   child: Container(
                     decoration: BoxDecoration(
                       color: moodColor,
@@ -331,26 +297,36 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLogoutButton() {
-    return ElevatedButton(
-      onPressed: () async {
-        await _auth.signOut();
-        Navigator.pushReplacementNamed(context, '/login');
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.pink[100],
-        minimumSize: Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: Text(
-        'Logout',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Jakarta',
+    return Center(
+      child: SizedBox(
+        width: double.infinity, // Stretches the button
+        child: ElevatedButton(
+          onPressed: _logout,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.pink[300],
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: Text(
+            'Logout',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Jakarta',
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  // Method to handle bio update
+  void _updateBio(String newBio) {
+    setState(() {
+      _bio = newBio;
+    });
   }
 }
