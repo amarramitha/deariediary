@@ -42,18 +42,22 @@ class DiaryController extends GetxController {
             .orderBy('date', descending: true)
             .get();
 
-        diaryEntries.value = snapshot.docs.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'title': data['title'],
-            'content': data['content'],
-            'mood': data['mood'],
-            'image': data['image'],
-            'audio': data['audio'],
-            'date': (data['date'] as Timestamp).toDate(),
-          };
-        }).toList();
+        if (snapshot.docs.isEmpty) {
+          diaryEntries.clear(); // Ensure it's clear if no entries are found
+        } else {
+          diaryEntries.value = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'title': data['title'],
+              'content': data['content'],
+              'mood': data['mood'],
+              'image': data['image'],
+              'audio': data['audio'],
+              'date': (data['date'] as Timestamp).toDate(),
+            };
+          }).toList();
+        }
       } catch (e) {
         print("Error fetching diary entries: $e");
       } finally {

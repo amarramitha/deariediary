@@ -42,6 +42,9 @@ class DiaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fetch diary entries when the page is loaded
+    diaryController.fetchDiaryEntries();
+
     return Scaffold(
       body: Obx(() {
         if (diaryController.isLoading.value) {

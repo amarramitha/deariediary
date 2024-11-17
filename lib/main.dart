@@ -5,16 +5,19 @@ import 'package:deariediary/diary/dashboard_diary.dart';
 import 'package:deariediary/login.dart';
 import 'package:deariediary/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase_options.dart'; // Make sure this is imported
+import 'firebase_options.dart'; // Pastikan ini diimpor dengan benar
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart'; // Import GetX
-
 import 'routes/routes.dart'; // Import routes file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  FirebaseFirestore db = FirebaseFirestore.instance;
+  try {
+    // Inisialisasi Firebase
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (e) {
+    print("Error initializing Firebase: $e");
+  }
 
   runApp(MyApp());
 }
@@ -23,13 +26,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      // Change to GetMaterialApp for GetX support
       title: 'Dearie Diary',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/splash', // Start with the splash screen route
-      getPages: AppRoutes.routes, // Define your routes here
+      initialRoute: '/splash', // Mulai dengan splash screen route
+      getPages: AppRoutes.routes, // Tentukan routes di sini
     );
   }
 }
