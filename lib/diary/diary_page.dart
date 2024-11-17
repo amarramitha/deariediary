@@ -113,6 +113,7 @@ class DiaryPage extends StatelessWidget {
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
+                              fontFamily: 'Jakarta',
                             ),
                           ),
                           Text(
@@ -135,6 +136,7 @@ class DiaryPage extends StatelessWidget {
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
+                                fontFamily: 'Jakarta',
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -145,6 +147,7 @@ class DiaryPage extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black87,
+                                fontFamily: 'Jakarta',
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,

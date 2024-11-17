@@ -33,7 +33,10 @@ class DashboardDiary extends StatelessWidget {
         preferredSize: Size.fromHeight(kToolbarHeight),
         child: Obx(() {
           return AppBar(
-            title: Text(_titles[dashboardController.selectedIndex.value]),
+            title: Text(
+              _titles[dashboardController.selectedIndex.value],
+              style: TextStyle(fontFamily: 'Jakartamedium'),
+            ),
             backgroundColor: const Color.fromARGB(255, 255, 185, 210),
           );
         }),
@@ -51,12 +54,22 @@ class DashboardDiary extends StatelessWidget {
           selectedItemColor: Colors.blue,
           unselectedItemColor: Colors.grey,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Diary'),
-            BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Sambat'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.sentiment_satisfied), label: 'Mood Tracker'),
+              icon: Icon(Icons.book),
+              label: 'Diary',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.account_circle), label: 'Profil'),
+              icon: Icon(Icons.feed),
+              label: 'Sambat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.sentiment_satisfied),
+              label: 'Mood Tracker',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_circle),
+              label: 'Profil',
+            ),
           ],
         );
       }),
@@ -64,12 +77,14 @@ class DashboardDiary extends StatelessWidget {
         if (dashboardController.selectedIndex.value == 1) {
           return FloatingActionButton(
             onPressed: () {
-              Get.to(AddPostPage()); // Menavigasi ke halaman pembuatan postingan
+              Get.to(
+                  AddPostPage()); // Menavigasi ke halaman pembuatan postingan
             },
             child: Icon(Icons.add),
           );
         }
-        return SizedBox.shrink(); // Tidak menampilkan FAB jika bukan di halaman Post Feed
+        return SizedBox
+            .shrink(); // Tidak menampilkan FAB jika bukan di halaman Post Feed
       }),
     );
   }

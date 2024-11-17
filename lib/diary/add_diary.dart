@@ -307,20 +307,22 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           ),
                         ),
 
-                        // Add Image Button
-                        SizedBox(height: 20),
-                        _imageFile == null
-                            ? IconButton(
-                                icon: Icon(Icons.add_a_photo),
-                                onPressed: _pickImage,
-                                tooltip: 'Pick an image',
-                              )
-                            : Image.file(
-                                _imageFile!,
-                                height: 100, // Adjust the image size as needed
-                                width: 100,
-                                fit: BoxFit.cover,
-                              ),
+                        SizedBox(height: 10),
+                        if (_imageFile != null)
+                          Image.file(
+                            _imageFile!, // Display the picked image file
+                            height: 150,
+                          ),
+                        SizedBox(height: 10),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.image, size: 30),
+                              onPressed:
+                                  _pickImage, // Trigger the image picking
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

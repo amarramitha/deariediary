@@ -4,8 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:deariediary/controller/post_controller.dart';
-import 'package:deariediary/controller/dashboard_controller.dart';
-import 'package:deariediary/routes/routes.dart'; // Import the controller
+import 'package:deariediary/routes/routes.dart';
 
 class AddPostPage extends StatefulWidget {
   @override
@@ -17,10 +16,8 @@ class _AddPostPageState extends State<AddPostPage> {
   XFile? _selectedImage;
   bool _isLoading = false;
 
-  // Create an instance of the PostController
   final PostController _postControllerInstance = Get.put(PostController());
 
-  // Function to pick an image
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
@@ -51,7 +48,6 @@ class _AddPostPageState extends State<AddPostPage> {
         SnackBar(content: Text('Post created successfully!')),
       );
 
-      // Reset form setelah berhasil menambah post
       _postController.clear();
       setState(() {
         _selectedImage = null;
@@ -73,20 +69,57 @@ class _AddPostPageState extends State<AddPostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Create Post")),
+      backgroundColor: Colors.pink[50], // Light pink background color
+      appBar: AppBar(
+        backgroundColor:
+            Colors.pink[50], // Set the AppBar background color to pink
+        leading: IconButton(
+          icon: Icon(Icons.close),
+          onPressed: () => Get.back(),
+        ),
+        actions: [
+          IconButton(
+            icon: _isLoading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.pink[50],
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    "Post",
+                    style: TextStyle(fontSize: 18, fontFamily: 'Jakarta'),
+                  ),
+            onPressed: _isLoading ? null : _savePost,
+          ),
+        ],
+      ),
+
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Input for content
-            TextField(
-              controller: _postController,
-              decoration: InputDecoration(labelText: "What's on your mind?"),
-              maxLines: 3,
+            // Make the TextField full-width using Expanded and remove the border
+            Expanded(
+              child: TextField(
+                controller: _postController,
+                decoration: InputDecoration(
+                  hintText: "What's on your mind?",
+                  alignLabelWithHint: true, // Keeps hint aligned to the top
+
+                  contentPadding: EdgeInsets.only(
+                    top: 16,
+                    left: 8,
+                  ), // Adjust padding to align text to the top
+                  border: InputBorder.none, // Remove the underline/border
+                ),
+                maxLines: null,
+              ),
             ),
             SizedBox(height: 10),
-            // Display selected image
             if (_selectedImage != null)
               Image.file(
                 File(_selectedImage!.path),
@@ -95,25 +128,9 @@ class _AddPostPageState extends State<AddPostPage> {
             SizedBox(height: 10),
             Row(
               children: [
-                // Button to pick an image
-                ElevatedButton(
+                IconButton(
+                  icon: Icon(Icons.image, size: 30),
                   onPressed: _pickImage,
-                  child: Text("Upload Image"),
-                ),
-                Spacer(),
-                // Button to save the post
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _savePost,
-                  child: _isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text("Post"),
                 ),
               ],
             ),

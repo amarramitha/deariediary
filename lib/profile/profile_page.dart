@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Tambahkan Firestore untuk simpan data
 import 'edit_profile.dart';
-import 'dart:async'; // Import Timer
+import 'dart:async';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -10,10 +11,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String _quoteOfTheDay = ''; // Quote yang akan diganti
-  String _bio = 'Setiap hari memberikan hadiahnya masing-masing.'; // Perkenalan default
+  String _quoteOfTheDay = '';
+  String _bio = 'Setiap hari memberikan hadiahnya masing-masing.';
 
-  // Daftar quote yang akan ditampilkan secara acak
   final List<String> quotes = [
     '“Hidup adalah apa yang terjadi ketika kita sibuk merencanakan hal lain.” – John Lennon',
     '“Keberhasilan adalah kemampuan untuk pergi dari kegagalan ke kegagalan tanpa kehilangan antusiasme.” – Winston Churchill',
@@ -22,41 +22,49 @@ class _ProfilePageState extends State<ProfilePage> {
     '“Tantangan adalah kesempatan untuk tumbuh lebih kuat.” – Unknown'
   ];
 
-  // Mengambil quote acak berdasarkan waktu
-  String getQuoteOfTheDay() {
-    final randomIndex = (quotes.length * (DateTime.now().second / 60)).floor(); // Menggunakan waktu untuk mendapatkan index acak
-    return quotes[randomIndex % quotes.length];
-  }
-
   @override
   void initState() {
     super.initState();
-    _quoteOfTheDay = getQuoteOfTheDay(); // Set quote awal saat halaman pertama kali dibuka
+    _quoteOfTheDay = getQuoteOfTheDay();
 
-    // Timer untuk mengganti quote setiap 1 menit
     Timer.periodic(Duration(minutes: 1), (timer) {
       if (mounted) {
         setState(() {
-          _quoteOfTheDay = getQuoteOfTheDay(); // Ganti quote setiap 1 menit
+          _quoteOfTheDay = getQuoteOfTheDay();
         });
       }
     });
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  String getQuoteOfTheDay() {
+    final randomIndex = (quotes.length * (DateTime.now().second / 60)).floor();
+    return quotes[randomIndex % quotes.length];
   }
 
   Future<String> _getUserName() async {
     User? user = _auth.currentUser;
-    return user?.displayName ?? 'Nama Pengguna'; // Mengambil nama pengguna jika ada
+    return user?.displayName ?? 'Nama Pengguna';
+  }
+
+  Future<String> _getUserBio() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      // Ensure the document exists and contains the 'bio' field
+      if (doc.exists && doc.data() != null) {
+        return doc['bio'] ?? 'Setiap hari memberikan hadiahnya masing-masing.';
+      }
+    }
+    return 'Setiap hari memberikan hadiahnya masing-masing.';
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: _getUserName(), // Mengambil name dari Firebase
+      future: _getUserName(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -72,7 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
           );
         }
 
-        // Nama pengguna dari Firebase Authentication
         String name = snapshot.data!;
 
         return Scaffold(
@@ -82,7 +89,6 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile Information
                 Row(
                   children: [
                     CircleAvatar(
@@ -96,27 +102,48 @@ class _ProfilePageState extends State<ProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            name, // Nama pengguna dari Firebase
+                            name,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              fontFamily: 'Jakarta',
                             ),
                           ),
                           SizedBox(height: 4),
-                          Text(
-                            _bio, // Perkenalan yang diambil dari _bio
-                            style: TextStyle(color: Colors.grey[700]),
+                          FutureBuilder<String>(
+                            future: _getUserBio(),
+                            builder: (context, bioSnapshot) {
+                              if (bioSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return CircularProgressIndicator();
+                              }
+                              if (bioSnapshot.hasError) {
+                                return Text('Error loading bio');
+                              }
+
+                              _bio = bioSnapshot.data!;
+                              return Text(
+                                _bio,
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontFamily: 'Jakarta',
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
-                    // Membuat ikon panah bisa di klik
                     InkWell(
                       onTap: () {
-                        // Navigasi ke halaman edit_profile.dart
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => EditProfile(bio: _bio, onBioUpdated: _updateBio)), // Ganti dengan widget halaman EditProfile Anda
+                          MaterialPageRoute(
+                            builder: (context) => EditProfile(
+                              bio: _bio,
+                              onBioUpdated: _updateBio,
+                            ),
+                          ),
                         );
                       },
                       child: Icon(Icons.arrow_forward_ios, color: Colors.grey),
@@ -124,22 +151,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 SizedBox(height: 30),
-                // Statistik Mood
                 Text(
                   'Statistik Mood Anda (Per Bulan):',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.pink[300],
+                    fontFamily: 'Jakarta',
                   ),
                 ),
                 SizedBox(height: 16),
-                // Mood Chart
                 _buildMoodChart(),
                 SizedBox(height: 30),
-                // Quote of the Day
                 _buildQuoteCard(),
                 SizedBox(height: 30),
+                _buildLogoutButton(),
               ],
             ),
           ),
@@ -148,14 +174,23 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Fungsi untuk memperbarui bio
-  void _updateBio(String updatedBio) {
+  void _updateBio(String updatedBio) async {
     setState(() {
       _bio = updatedBio;
     });
+    await _saveBioToDatabase(updatedBio);
   }
 
-  // Card untuk menampilkan quote of the day
+  Future<void> _saveBioToDatabase(String bio) async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'bio': bio});
+    }
+  }
+
   Widget _buildQuoteCard() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -179,15 +214,17 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.pink[300],
+              fontFamily: 'Jakarta',
             ),
           ),
           SizedBox(height: 8),
           Text(
-            '"$_quoteOfTheDay"', // Menampilkan quote yang berubah
+            '"$_quoteOfTheDay"',
             style: TextStyle(
               fontSize: 16,
               fontStyle: FontStyle.italic,
               color: Colors.grey[700],
+              fontFamily: 'Jakarta',
             ),
           ),
         ],
@@ -212,7 +249,6 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mood Stats (dummy data for the month)
           _buildMoodBar('Minggu 1', 5),
           _buildMoodBar('Minggu 2', 3),
           _buildMoodBar('Minggu 3', 4),
@@ -223,35 +259,28 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildMoodBar(String week, int moodLevel) {
-    // Emoji untuk setiap tingkat mood
     String moodEmoji = '';
-    String moodDescription = '';
     Color moodColor = Colors.grey;
 
     switch (moodLevel) {
       case 5:
-        moodEmoji = '😊'; // Bahagia
-        moodDescription = 'Sangat Bahagia';
+        moodEmoji = '😊';
         moodColor = Colors.green;
         break;
       case 4:
-        moodEmoji = '🙂'; // Senang
-        moodDescription = 'Senang';
+        moodEmoji = '🙂';
         moodColor = Colors.yellow;
         break;
       case 3:
-        moodEmoji = '😐'; // Netral
-        moodDescription = 'Netral';
+        moodEmoji = '😐';
         moodColor = Colors.orange;
         break;
       case 2:
-        moodEmoji = '😞'; // Sedih
-        moodDescription = 'Sedih';
+        moodEmoji = '😞';
         moodColor = Colors.red;
         break;
       default:
-        moodEmoji = '😔'; // Sangat Sedih
-        moodDescription = 'Sangat Sedih';
+        moodEmoji = '😔';
         moodColor = Colors.redAccent;
         break;
     }
@@ -263,17 +292,19 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Text(
             week,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Jakarta',
+            ),
           ),
           Row(
             children: [
-              // Emoji
               Text(
                 moodEmoji,
                 style: TextStyle(fontSize: 24),
               ),
               SizedBox(width: 8),
-              // Mood Level bar
               Container(
                 width: 200,
                 height: 20,
@@ -283,7 +314,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: moodLevel / 5.0, // Normalize to a range of 0-1
+                  widthFactor: moodLevel / 5,
                   child: Container(
                     decoration: BoxDecoration(
                       color: moodColor,
@@ -295,6 +326,30 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return ElevatedButton(
+      onPressed: () async {
+        await _auth.signOut();
+        Navigator.pushReplacementNamed(context, '/login');
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.pink[100],
+        minimumSize: Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: Text(
+        'Logout',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Jakarta',
+        ),
       ),
     );
   }

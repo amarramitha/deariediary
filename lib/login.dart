@@ -1,48 +1,41 @@
 import 'package:deariediary/controller/login_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // Import GetX for navigation and state management
-import 'package:deariediary/register.dart'; // Register page import
-import 'controller/login_controller.dart'; // Import the LoginController
+import 'package:get/get.dart';
+import 'package:deariediary/register.dart';
 
 class Login extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Bind the LoginController to the widget using GetX
     final LoginController controller = Get.put(LoginController());
 
     return Scaffold(
       body: Container(
-        // Set the background color to pink
         decoration: BoxDecoration(
-          color: Colors.pink[100], // Light pink background
+          color: Colors.pink[100],
         ),
         child: Center(
-          // This will center everything inside the body
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // Center the content vertically
-                crossAxisAlignment: CrossAxisAlignment
-                    .center, // Center the content horizontally
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Logo
                   Image.asset(
-                    'images/logo.jpg', // Add your logo image in the assets folder
-                    height: 100, // You can adjust the size of the logo
+                    'images/logo.jpg',
+                    height: 100,
                   ),
-                  SizedBox(
-                      height: 32), // Space between the logo and input fields
+                  SizedBox(height: 32),
 
                   // Email TextField
                   TextField(
                     onChanged: (value) {
-                      controller.email.value =
-                          value; // Update observable email value
+                      controller.email.value = value;
                     },
                     decoration: InputDecoration(
                       labelText: "Email",
+                      labelStyle: TextStyle(fontFamily: 'Jakarta'),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -55,11 +48,11 @@ class Login extends StatelessWidget {
                   // Password TextField
                   TextField(
                     onChanged: (value) {
-                      controller.password.value =
-                          value; // Update observable password value
+                      controller.password.value = value;
                     },
                     decoration: InputDecoration(
                       labelText: "Password",
+                      labelStyle: TextStyle(fontFamily: 'Jakarta'),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -73,13 +66,11 @@ class Login extends StatelessWidget {
                   // Login Button
                   ElevatedButton(
                     onPressed: () {
-                      controller.login(); // Call login function from controller
+                      controller.login();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(
-                          255, 228, 137, 167), // Button color
-                      minimumSize:
-                          Size(double.infinity, 50), // Full width button
+                      backgroundColor: const Color.fromARGB(255, 228, 137, 167),
+                      minimumSize: Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -87,20 +78,27 @@ class Login extends StatelessWidget {
                     child: Text(
                       "Login",
                       style: TextStyle(
-                        color: Colors.white, // Set the text color to white
+                        fontFamily: 'Jakarta',
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                  SizedBox(height: 20), // Add some spacing
+                  SizedBox(height: 20),
 
                   // Navigate to Register Page
-                  Text("Belum punya akun?"),
+                  Text(
+                    "Belum punya akun?",
+                    style: TextStyle(fontFamily: 'Jakarta'),
+                  ),
                   TextButton(
                     onPressed: () {
-                      // Use GetX navigation to go to the Register page
                       Get.to(() => Register());
                     },
-                    child: Text("Daftar Sekarang"),
+                    child: Text(
+                      "Daftar Sekarang",
+                      style: TextStyle(
+                          fontFamily: 'Jakarta', color: Colors.pink[800]),
+                    ),
                   ),
                 ],
               ),

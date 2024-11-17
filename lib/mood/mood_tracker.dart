@@ -1,6 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class MoodTrackerPage extends StatefulWidget {
@@ -9,116 +10,184 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  Map<DateTime, String> _moodData = {}; // Store mood data by date
-  DateTime _selectedDay = DateTime.now();
-  FirebaseFirestore _db = FirebaseFirestore.instance;
-  ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
+  Map<DateTime, String> _selectedMoods = {}; // Data emoji
+  DateTime _selectedDay = DateTime.now(); // Tanggal dipilih
+  DateTime _focusedDay = DateTime.now(); // Tanggal fokus
+  final List<String> _availableEmojis = [
+    '😊',
+    '😢',
+    '😠',
+    '😍',
+    '😞',
+    '😁',
+    '😌',
+    '😖',
+    '😭',
+    '😕',
+    '😎',
+    '🤣',
+    '🥳',
+    '😴',
+    '🤒',
+    '🤔',
+    '🥱',
+    '🥴',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _fetchMoodData(); // Fetch mood data from Firebase
+    _loadMoodsFromFirestore(); // Load data mood saat aplikasi mulai
   }
 
-  Future<void> _fetchMoodData() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
+  String? get userId => FirebaseAuth.instance.currentUser?.uid;
 
-    if (currentUser != null) {
-      try {
-        isLoading.value = true;
+  Future<void> _loadMoodsFromFirestore() async {
+    if (userId == null) return;
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('moods')
+          .get();
 
-        // Fetch diary entries from Firebase
-        final snapshot = await _db
-            .collection('users')
-            .doc(currentUser.uid)
-            .collection('diary_entries')
-            .orderBy('date', descending: true) // Sort by date
-            .get();
-
-        // Create a map to store moods by date
-        Map<DateTime, String> fetchedMoodData = {};
-
-        // Process each document to get mood and date
-        for (var doc in snapshot.docs) {
-          final data = doc.data();
-          final date = (data['date'] as Timestamp)
-              .toDate(); // Convert Timestamp to DateTime
-          final mood = data['mood'];
-
-          // Save mood by date (only date, without time)
-          fetchedMoodData[DateTime(date.year, date.month, date.day)] = mood;
-        }
-
-        // Update _moodData with the fetched data
-        setState(() {
-          _moodData = fetchedMoodData;
-        });
-      } catch (e) {
-        print("Error fetching mood data: $e");
-      } finally {
-        isLoading.value = false;
-      }
+      setState(() {
+        _selectedMoods = {
+          for (var doc in querySnapshot.docs)
+            (doc['date'] as Timestamp).toDate(): doc['mood']
+        };
+      });
+    } catch (e) {
+      print("Error loading moods: $e");
     }
   }
 
-  String _getMoodForDate(DateTime date) {
-    return _moodData[date] ?? 'neutral'; // Default to 'neutral' if no mood
+  Future<void> _addMoodForSelectedDay(String mood) async {
+    if (userId == null) return;
+    final String dateKey = DateFormat('yyyy-MM-dd').format(_selectedDay);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('moods')
+          .doc(dateKey)
+          .set({'mood': mood, 'date': _selectedDay});
+
+      setState(() {
+        _selectedMoods[_selectedDay] = mood;
+        _focusedDay = _selectedDay; // Refresh tampilan kalender
+      });
+    } catch (e) {
+      print("Error saving mood: $e");
+    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Mood Tracker'),
-      ),
-      body: Column(
-        children: [
-          // Display mood calendar
-          TableCalendar(
-            focusedDay: _selectedDay,
-            firstDay: DateTime.utc(2024, 1, 1),
-            lastDay: DateTime.utc(2024, 12, 31),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-              });
-            },
-            eventLoader: (day) {
-              return [_getMoodForDate(day)]; // Load mood for the day
-            },
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, date, events) {
-                String mood = _getMoodForDate(date); // Get mood for the day
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 5),
-                  child: Text(
-                    mood == 'neutral' ? '${date.day}' : moodEmoji(mood),
-                    style: TextStyle(fontSize: 16),
+  void _showEmojiDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Pilih mood kamu"),
+          content: Container(
+            height: 230,
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 12.0,
+                mainAxisSpacing: 12.0,
+              ),
+              itemCount: _availableEmojis.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      // Update emoji langsung di UI
+                      _selectedMoods[_selectedDay] = _availableEmojis[index];
+                      _focusedDay = _selectedDay; // Perbarui tampilan kalender
+                    });
+                    _addMoodForSelectedDay(_availableEmojis[index]);
+                    Navigator.of(context).pop(); // Tutup dialog
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _availableEmojis[index],
+                        style: TextStyle(fontSize: 40),
+                      ),
+                    ),
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 20),
-          // Show selected mood
-          Text(
-            'Mood for ${_selectedDay.toLocal()} is: ${_getMoodForDate(_selectedDay)}',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        );
+      },
+    );
+  }
+
+  String? _getMoodForDate(DateTime date) {
+    for (DateTime key in _selectedMoods.keys) {
+      if (isSameDay(key, date)) {
+        return _selectedMoods[key];
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+              _showEmojiDialog();
+            },
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, date, _) => _buildDay(date),
+              todayBuilder: (context, date, _) =>
+                  _buildDay(date, isToday: true),
+              selectedBuilder: (context, date, _) =>
+                  _buildDay(date, isSelected: true),
+            ),
           ),
         ],
       ),
     );
   }
 
-  String moodEmoji(String mood) {
-    switch (mood) {
-      case 'happy':
-        return '😊';
-      case 'sad':
-        return '😢';
-      case 'neutral':
-      default:
-        return '😐';
-    }
+  Widget _buildDay(DateTime date,
+      {bool isToday = false, bool isSelected = false}) {
+    final mood = _getMoodForDate(date);
+    return Container(
+      decoration: BoxDecoration(
+        color: isToday
+            ? Colors.blueAccent
+            : (isSelected ? Colors.pink[100] : Colors.transparent),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          mood ?? '${date.day}',
+          style: TextStyle(
+            fontSize: mood != null ? 24 : 14,
+            color: isToday || isSelected ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+    );
   }
 }

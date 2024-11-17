@@ -79,11 +79,23 @@ flutter:
     - images/
   #   - images/a_dot_ham.jpeg
 
-fonts:
+  fonts:
   - family: Marckscript
     fonts:
     - asset: fonts/MarckScript-Regular.ttf
-  # An image asset can refer to one or more resolution-specific "variants", see
+  - family: Edu
+    fonts:
+    - asset: fonts/EduAUVICWANTPre-Medium.ttf
+  - family: Jakarta
+    fonts:
+    - asset: fonts/PlusJakartaSans-Regular.ttf
+  - family: Jakartamedium
+    fonts:
+    - asset: fonts/PlusJakartaSans-Medium.ttf  
+  - family: Mate
+    fonts:
+    - asset: fonts/Mate-Regular.ttf
+      # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
   # For details regarding adding assets from package dependencies, see

@@ -49,23 +49,21 @@ class _SplashScreenState extends State<SplashScreen> {
               height: 150,
             ),
             SizedBox(height: 20),
-            Text(
+            const Text(
               'Dearie Diary',
               style: TextStyle(
-                fontFamily: 'Marckscript',
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: const Color.fromARGB(
-                    255, 218, 96, 136), // Set the text color to pink
+                fontFamily: 'Edu',
+                fontSize: 30,
+                color: Color.fromARGB(255, 218, 96, 136),
                 shadows: [
                   Shadow(
                     blurRadius: 4.0,
-                    color: Colors.white, // White shadow color
-                    offset: Offset(2.0, 2.0), // Position of the shadow
+                    color: Colors.white,
+                    offset: Offset(2.0, 2.0),
                   ),
                 ],
               ),
-            ),
+            )
           ],
         ),
       ),

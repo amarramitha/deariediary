@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:get/get.dart'; // Import GetX package
-import 'login.dart'; // Import the Login page
+import 'package:get/get.dart';
+import 'login.dart';
 
 class Register extends StatefulWidget {
   @override
@@ -44,7 +44,6 @@ class _RegisterState extends State<Register> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            // This makes the content scrollable
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -56,10 +55,13 @@ class _RegisterState extends State<Register> {
                     height: 100,
                   ),
                   SizedBox(height: 32),
+
+                  // Name TextField
                   TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
                       labelText: 'Name',
+                      labelStyle: TextStyle(fontFamily: 'Jakarta'),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -68,10 +70,13 @@ class _RegisterState extends State<Register> {
                     ),
                   ),
                   SizedBox(height: 16),
+
+                  // Email TextField
                   TextField(
                     controller: _emailController,
                     decoration: InputDecoration(
                       labelText: 'Email',
+                      labelStyle: TextStyle(fontFamily: 'Jakarta'),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -81,10 +86,13 @@ class _RegisterState extends State<Register> {
                     keyboardType: TextInputType.emailAddress,
                   ),
                   SizedBox(height: 16),
+
+                  // Password TextField
                   TextField(
                     controller: _passwordController,
                     decoration: InputDecoration(
                       labelText: 'Password',
+                      labelStyle: TextStyle(fontFamily: 'Jakarta'),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -94,11 +102,12 @@ class _RegisterState extends State<Register> {
                     obscureText: true,
                   ),
                   SizedBox(height: 20),
+
+                  // Register Button
                   ElevatedButton(
                     onPressed: registerWithEmailPassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(
-                          255, 228, 137, 167), // Button color
+                      backgroundColor: const Color.fromARGB(255, 228, 137, 167),
                       minimumSize: Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -106,18 +115,30 @@ class _RegisterState extends State<Register> {
                     ),
                     child: Text(
                       'Register',
-                      style:
-                          TextStyle(color: Colors.white), // Text color to white
+                      style: TextStyle(
+                        fontFamily: 'Jakarta',
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   SizedBox(height: 16),
-                  Text("Sudah punya akun?"),
+
+                  // Login Option
+                  Text(
+                    "Sudah punya akun?",
+                    style: TextStyle(fontFamily: 'Jakarta'),
+                  ),
                   TextButton(
                     onPressed: () {
-                      // Use GetX navigation to go to the Login page
                       Get.to(() => Login());
                     },
-                    child: Text("Login"),
+                    child: Text(
+                      "Login",
+                      style: TextStyle(
+                        fontFamily: 'Jakarta',
+                        color: Colors.pink[800],
+                      ),
+                    ),
                   ),
                 ],
               ),

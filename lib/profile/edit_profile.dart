@@ -25,6 +25,16 @@ class _EditProfileState extends State<EditProfile> {
   void initState() {
     super.initState();
     _bioController.text = widget.bio;
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      setState(() {
+        _lastNameController.text = user.displayName?.split(' ').last ?? '';
+      });
+    }
   }
 
   Future<String> _getUserProfilePicture() async {
@@ -36,7 +46,8 @@ class _EditProfileState extends State<EditProfile> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? pickedFile =
+        await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
@@ -48,7 +59,10 @@ class _EditProfileState extends State<EditProfile> {
     if (_imageFile != null) {
       final user = _auth.currentUser;
       final fileName = 'profile_${user!.uid}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('profile_pictures').child(fileName);
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child(fileName);
       await storageRef.putFile(_imageFile!);
       final downloadURL = await storageRef.getDownloadURL();
       await user.updatePhotoURL(downloadURL);
@@ -58,7 +72,8 @@ class _EditProfileState extends State<EditProfile> {
   Future<void> _updateLastName() async {
     User? user = _auth.currentUser;
     if (user != null && _lastNameController.text.isNotEmpty) {
-      await user.updateDisplayName('${user.displayName} ${_lastNameController.text}');
+      await user.updateDisplayName(
+          '${user.displayName?.split(' ').first} ${_lastNameController.text}');
     }
   }
 
@@ -75,7 +90,8 @@ class _EditProfileState extends State<EditProfile> {
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,  // Set alignment to start for text
+          crossAxisAlignment:
+              CrossAxisAlignment.start, // Set alignment to start for text
           children: [
             Center(
               child: GestureDetector(
@@ -102,7 +118,8 @@ class _EditProfileState extends State<EditProfile> {
                             ? FileImage(_imageFile!)
                             : NetworkImage(snapshot.data!) as ImageProvider,
                         child: _imageFile == null
-                            ? Icon(Icons.add_a_photo, color: Colors.white, size: 30)
+                            ? Icon(Icons.add_a_photo,
+                                color: Colors.white, size: 30)
                             : null,
                       );
                     }
@@ -151,9 +168,12 @@ class _EditProfileState extends State<EditProfile> {
             Center(
               child: ElevatedButton(
                 onPressed: () async {
-                  widget.onBioUpdated(_bioController.text);
+                  widget.onBioUpdated(
+                      _bioController.text); // Notify parent widget
                   await _updateLastName();
                   await _uploadProfilePicture();
+                  await user
+                      ?.updateDisplayName(_bioController.text); // Update bio
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
@@ -165,7 +185,10 @@ class _EditProfileState extends State<EditProfile> {
                 ),
                 child: Text(
                   'Simpan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Jakarta'),
                 ),
               ),
             ),
