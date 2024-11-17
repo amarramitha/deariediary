@@ -11,47 +11,28 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  Map<DateTime, String> _selectedMoods = {};
+  Map<DateTime, String> _selectedMoods =
+      {}; // Menyimpan mood berdasarkan tanggal
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
-  final List<String> _availableEmojis = [
-    '😊',
-    '😢',
-    '😠',
-    '😍',
-    '😞',
-    '😁',
-    '😌',
-    '😖',
-    '😭',
-    '😕',
-    '😎',
-    '🤣',
-    '🥳',
-    '😴',
-    '🤒',
-    '🤔',
-    '🥱',
-    '🥴',
-    '🤑',
-    '😮‍💨',
-  ];
 
   @override
   void initState() {
     super.initState();
-    _loadMoodsFromFirestore();
+    _loadMoodsFromFirestore(); // Memuat mood dari Firestore
   }
 
   String? get userId => FirebaseAuth.instance.currentUser?.uid;
 
+  // Memuat data mood dari Firestore
   Future<void> _loadMoodsFromFirestore() async {
     if (userId == null) return;
     try {
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
-          .collection('moods')
+          .collection('diary_entries')
+          .orderBy('date', descending: true) // Mengurutkan berdasarkan tanggal
           .get();
 
       setState(() {
@@ -65,97 +46,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     }
   }
 
-  Future<void> _addMoodForSelectedDay(String mood) async {
-    if (userId == null) return;
-
-    // Memastikan tanggal yang dipilih tidak lebih dari hari ini
-    if (_selectedDay.isAfter(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Tidak dapat memilih mood untuk tanggal besok.')),
-      );
-      return;
-    }
-
-    final String dateKey = DateFormat('yyyy-MM-dd').format(_selectedDay);
-
-    try {
-      // Update mood di Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('moods')
-          .doc(dateKey)
-          .set({'mood': mood, 'date': _selectedDay});
-
-      // Setelah disimpan, reload mood dari Firestore
-      _loadMoodsFromFirestore();
-    } catch (e) {
-      print("Error saving mood: $e");
-    }
-  }
-
-  void _showEmojiDialog() {
-    String? existingMood = _getMoodForDate(_selectedDay);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        double dialogWidth = MediaQuery.of(context).size.width * 0.8;
-        double dialogHeight = MediaQuery.of(context).size.height * 0.4;
-
-        return AlertDialog(
-          title: Text("Pilih atau Edit Mood Kamu"),
-          content: Container(
-            width: dialogWidth,
-            height: dialogHeight,
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 12.0,
-                mainAxisSpacing: 12.0,
-              ),
-              itemCount: _availableEmojis.length,
-              itemBuilder: (context, index) {
-                final emoji = _availableEmojis[index];
-                final isSelected = emoji == existingMood;
-
-                return GestureDetector(
-                  onTap: () {
-                    // Segera perbarui mood untuk tanggal yang dipilih
-                    setState(() {
-                      _selectedMoods[_selectedDay] = emoji;
-                    });
-
-                    // Simpan ke Firestore
-                    _addMoodForSelectedDay(emoji);
-
-                    // Tutup dialog
-                    Navigator.of(context).pop();
-                  },
-                  child: Container(
-                    child: Center(
-                      child: RichText(
-                        text: TextSpan(
-                          text: emoji,
-                          style: GoogleFonts.notoColorEmoji(
-                            textStyle: TextStyle(
-                              fontSize: 40,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
+  // Mendapatkan mood untuk tanggal tertentu
   String? _getMoodForDate(DateTime date) {
     for (DateTime key in _selectedMoods.keys) {
       if (isSameDay(key, date)) {
@@ -180,16 +71,6 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              // Tampilkan dialog emoji hanya jika tanggal yang dipilih valid
-              if (!_selectedDay.isAfter(DateTime.now())) {
-                _showEmojiDialog();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                          Text('Belum dapat memilih mood untuk tanggal ini.')),
-                );
-              }
             },
             calendarBuilders: CalendarBuilders(
               defaultBuilder: (context, date, _) => _buildDay(date),
@@ -204,6 +85,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     );
   }
 
+  // Membuat tampilan hari pada kalender
   Widget _buildDay(DateTime date,
       {bool isToday = false, bool isSelected = false}) {
     final mood = _getMoodForDate(date);

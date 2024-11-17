@@ -43,10 +43,10 @@ class _RegisterState extends State<Register> {
         });
 
         // Show a success alert after registration
-        Get.snackbar(
-            'Registration Success', 'Welcome, ${_nameController.text}!',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
+        Get.snackbar('Registration Success',
+            'Your account has been created successfully!',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.blue[200],
             colorText: Colors.white);
 
         // Navigate to the login screen using GetX
@@ -75,7 +75,7 @@ class _RegisterState extends State<Register> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Image.asset(
-                    'images/logo.jpg',
+                    'images/logo.png',
                     height: 100,
                   ),
                   SizedBox(height: 32),

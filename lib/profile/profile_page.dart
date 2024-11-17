@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
 import 'edit_profile.dart';
-import 'dart:async';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -14,6 +14,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _quoteOfTheDay = '';
   String _name = 'Nama Pengguna';
   String _bio = 'Setiap hari memberikan hadiahnya masing-masing.';
+  List<int> _weeklyMoodData = [0, 0, 0, 0];
 
   final List<String> quotes = [
     '“Hidup adalah apa yang terjadi ketika kita sibuk merencanakan hal lain.” – John Lennon',
@@ -28,41 +29,71 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _quoteOfTheDay = getQuoteOfTheDay();
     _fetchUserData();
-
-    Timer.periodic(Duration(minutes: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _quoteOfTheDay = getQuoteOfTheDay();
-        });
-      }
-    });
+    _fetchMoodData();
   }
 
   String getQuoteOfTheDay() {
-    final randomIndex = (quotes.length * (DateTime.now().second / 60)).floor();
-    return quotes[randomIndex % quotes.length];
+    final randomIndex = DateTime.now().day % quotes.length;
+    return quotes[randomIndex];
   }
 
   Future<void> _fetchUserData() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      DocumentSnapshot userData = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot userData = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-      setState(() {
-        _name = userData['name'] ?? 'Nama Pengguna';
-        _bio = userData['bio'] ??
-            'Setiap hari memberikan hadiahnya masing-masing.';
-      });
+        setState(() {
+          _name = userData['name'] ?? 'Nama Pengguna';
+          _bio = userData['bio'] ??
+              'Setiap hari memberikan hadiahnya masing-masing.';
+        });
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
     }
   }
 
-  // Method to handle logout
+  Future<void> _fetchMoodData() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        QuerySnapshot moodEntries = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('diary_entries')
+            .orderBy('date', descending: true)
+            .get();
+
+        List<int> weeklyMood = [0, 0, 0, 0];
+
+        for (var entry in moodEntries.docs) {
+          Timestamp timestamp = entry['date'];
+          int moodLevel = entry['moodLevel'];
+          DateTime entryDate = timestamp.toDate();
+          int weekNumber =
+              ((DateTime.now().difference(entryDate).inDays) / 7).floor();
+
+          if (weekNumber >= 0 && weekNumber < 4) {
+            weeklyMood[weekNumber] = (weeklyMood[weekNumber] + moodLevel) ~/ 2;
+          }
+        }
+
+        setState(() {
+          _weeklyMoodData = weeklyMood;
+        });
+      }
+    } catch (e) {
+      print("Error fetching mood data: $e");
+    }
+  }
+
   Future<void> _logout() async {
     await _auth.signOut();
-    Navigator.of(context).pushReplacementNamed('/login');
+    Get.offNamed('/login');
   }
 
   @override
@@ -81,7 +112,6 @@ class _ProfilePageState extends State<ProfilePage> {
             _buildQuoteCard(),
             const SizedBox(height: 30),
             _buildLogoutButton(),
-            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -103,35 +133,16 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text(
                 _name,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Jakarta',
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              Text(
-                _bio,
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontFamily: 'Jakarta',
-                ),
-              ),
+              Text(_bio, style: TextStyle(color: Colors.grey[700])),
             ],
           ),
         ),
         InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EditProfile(
-                  bio: _bio,
-                  onBioUpdated: _updateBio,
-                ),
-              ),
-            );
-          },
+          onTap: () =>
+              Get.to(() => EditProfile(bio: _bio, onBioUpdated: _updateBio)),
           child: Icon(Icons.arrow_forward_ios, color: Colors.grey),
         ),
       ],
@@ -143,13 +154,11 @@ class _ProfilePageState extends State<ProfilePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Statistik Mood Anda (Per Bulan):',
+          'Statistik Mood Anda (Per Minggu):',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.pink[300],
-            fontFamily: 'Jakarta',
-          ),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.pink[300]),
         ),
         const SizedBox(height: 16),
         _buildMoodChart(),
@@ -165,40 +174,51 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
+              color: Colors.grey.withOpacity(0.3),
+              blurRadius: 5,
+              offset: Offset(0, 2))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quote of the Day:',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.pink[300],
-              fontFamily: 'Jakarta',
-            ),
-          ),
+          Text('Quote of the Day:',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.pink[300])),
           const SizedBox(height: 8),
-          Text(
-            '"$_quoteOfTheDay"',
-            style: TextStyle(
-              fontSize: 16,
-              fontStyle: FontStyle.italic,
-              color: Colors.grey[700],
-              fontFamily: 'Jakarta',
-            ),
-          ),
+          Text('"$_quoteOfTheDay"',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey[700])),
         ],
       ),
     );
   }
 
   Widget _buildMoodChart() {
+    // Uncomment to use a line chart instead of a list-based chart
+    /*
+    return LineChart(
+      LineChartData(
+        titlesData: FlTitlesData(show: true),
+        lineBarsData: [
+          LineChartBarData(
+            spots: List.generate(
+              _weeklyMoodData.length,
+              (index) => FlSpot(index.toDouble(), _weeklyMoodData[index].toDouble()),
+            ),
+            isCurved: true,
+            barWidth: 4,
+            colors: [Colors.pinkAccent],
+          ),
+        ],
+      ),
+    );
+    */
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -206,89 +226,50 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
+              color: Colors.grey.withOpacity(0.3),
+              blurRadius: 5,
+              offset: Offset(0, 2))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildMoodBar('Minggu 1', 5),
-          _buildMoodBar('Minggu 2', 3),
-          _buildMoodBar('Minggu 3', 4),
-          _buildMoodBar('Minggu 4', 2),
-        ],
+        children: List.generate(_weeklyMoodData.length, (index) {
+          return _buildMoodBar('Minggu ${index + 1}', _weeklyMoodData[index]);
+        }),
       ),
     );
   }
 
   Widget _buildMoodBar(String week, int moodLevel) {
-    String moodEmoji = '';
-    Color moodColor = Colors.grey;
-
-    switch (moodLevel) {
-      case 5:
-        moodEmoji = '😊';
-        moodColor = Colors.green;
-        break;
-      case 4:
-        moodEmoji = '🙂';
-        moodColor = Colors.yellow;
-        break;
-      case 3:
-        moodEmoji = '😐';
-        moodColor = Colors.orange;
-        break;
-      case 2:
-        moodEmoji = '😞';
-        moodColor = Colors.red;
-        break;
-      default:
-        moodEmoji = '😔';
-        moodColor = Colors.redAccent;
-        break;
-    }
+    String moodEmoji = moodLevel >= 4
+        ? '😊'
+        : moodLevel >= 3
+            ? '🙂'
+            : moodLevel >= 2
+                ? '😞'
+                : '😔';
+    Color moodColor = moodLevel >= 4
+        ? Colors.green
+        : moodLevel >= 3
+            ? Colors.yellow
+            : Colors.red;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            week,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Jakarta',
-            ),
-          ),
+          Text(week,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           Row(
             children: [
-              Text(
-                moodEmoji,
-                style: TextStyle(fontSize: 24),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 200,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.bottomCenter,
-                  widthFactor: moodLevel / 5.0,
-                  child: Container(
-                    decoration: BoxDecoration(
+              Text(moodEmoji, style: TextStyle(fontSize: 24)),
+              SizedBox(width: 8),
+              Text('$moodLevel/5',
+                  style: TextStyle(
                       color: moodColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
             ],
           ),
         ],
@@ -297,33 +278,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLogoutButton() {
-    return Center(
-      child: SizedBox(
-        width: double.infinity, // Stretches the button
-        child: ElevatedButton(
-          onPressed: _logout,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.pink[300],
-            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: Text(
-            'Logout',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Jakarta',
-              color: Colors.white,
-            ),
-          ),
-        ),
+    return ElevatedButton(
+      onPressed: _logout,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.pink[200],
+        minimumSize: Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
+      child: Text('Logout',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
-  // Method to handle bio update
   void _updateBio(String newBio) {
     setState(() {
       _bio = newBio;

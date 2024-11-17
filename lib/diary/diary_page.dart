@@ -10,35 +10,53 @@ import 'package:google_fonts/google_fonts.dart';
 class DiaryPage extends StatelessWidget {
   final DiaryController diaryController = Get.put(DiaryController());
 
-  // Map of mood labels to emojis
-  final Map<String, String> moodEmojis = {
-    'Happy': '😊',
-    'Sad': '😢',
-    'Angry': '😠',
-    'Loved': '😍',
-    'Disappointed': '😞',
-    'Excited': '😁',
-    'Relaxed': '😌',
-    'Stressed': '😖',
-    'Crying': '😭',
-    'Confused': '😕',
-    'neutral': '😐', // Default emoji for neutral mood
-  };
+  // List of emojis without mood labels
+  final List<String> moodEmojis = [
+    '😊',
+    '😢',
+    '😠',
+    '😍',
+    '😞',
+    '😁',
+    '😌',
+    '😖',
+    '😭',
+    '😕',
+    '😎',
+    '🤣',
+    '🥳',
+    '😴',
+    '🤒',
+    '🤔',
+    '🥱',
+    '🥴',
+    '🤑',
+    '😮‍💨',
+  ];
 
-  // Define color for each mood emoji
-  final Map<String, Color> emojiColors = {
-    'Happy': Colors.yellow,
-    'Sad': Colors.blue,
-    'Angry': Colors.red,
-    'Loved': Colors.pink,
-    'Disappointed': Colors.grey,
-    'Excited': Colors.orange,
-    'Relaxed': Colors.green,
-    'Stressed': Colors.purple,
-    'Crying': Colors.blueAccent,
-    'Confused': Colors.amber,
-    'neutral': Colors.black87,
-  };
+  // Define color for each emoji index (you can adjust accordingly)
+  final List<Color> emojiColors = [
+    Colors.yellow,
+    Colors.blue,
+    Colors.red,
+    Colors.pink,
+    Colors.grey,
+    Colors.orange,
+    Colors.green,
+    Colors.purple,
+    Colors.blueAccent,
+    Colors.amber,
+    Colors.black87,
+    Colors.green,
+    Colors.blue,
+    Colors.blueGrey,
+    Colors.purpleAccent,
+    Colors.orangeAccent,
+    Colors.lightGreen,
+    Colors.brown,
+    Colors.cyan,
+    Colors.teal,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -73,8 +91,13 @@ class DiaryPage extends StatelessWidget {
             final formattedMonth = DateFormat('MMM').format(date);
 
             String mood = entry['mood'] ?? 'neutral';
-            String moodEmoji = moodEmojis[mood] ?? moodEmojis['neutral']!;
-            Color emojiColor = emojiColors[mood] ?? emojiColors['neutral']!;
+
+            // Ensure valid index for emojis and colors
+            int moodIndex = moodEmojis.indexWhere((emoji) => emoji == mood);
+            if (moodIndex == -1)
+              moodIndex = 0; // Default to first emoji if no match
+            String moodEmoji = moodEmojis[moodIndex];
+            Color emojiColor = emojiColors[moodIndex];
 
             return GestureDetector(
               onTap: () {
@@ -155,6 +178,7 @@ class DiaryPage extends StatelessWidget {
                         style: GoogleFonts.notoColorEmoji(
                           textStyle: TextStyle(
                             fontSize: 24,
+                            color: emojiColor, // Color based on the mood
                           ),
                         ),
                       )),

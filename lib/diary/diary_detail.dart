@@ -27,22 +27,6 @@ class DiaryDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<DiaryController>();
 
-    final Map<String, String> moodEmojis = {
-      'Happy': '😊',
-      'Sad': '😢',
-      'Angry': '😠',
-      'Loved': '😍',
-      'Disappointed': '😞',
-      'Excited': '😁',
-      'Relaxed': '😌',
-      'Stressed': '😖',
-      'Crying': '😭',
-      'Confused': '😕',
-      'Neutral': '😐',
-    };
-
-    String moodEmoji = moodEmojis[mood] ?? moodEmojis['Neutral']!;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.pink[50],
@@ -116,13 +100,14 @@ class DiaryDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Date display with formatting
                     Text(
                       DateFormat('yyyy-MM-dd').format(timestamp),
                       style: TextStyle(
@@ -131,9 +116,11 @@ class DiaryDetailPage extends StatelessWidget {
                         fontStyle: FontStyle.italic,
                       ),
                     ),
+                    // Mood emoji directly fetched from the database
                     RichText(
                       text: TextSpan(
-                        text: moodEmoji,
+                        text:
+                            mood, // Directly use the mood data from the database
                         style: GoogleFonts.notoColorEmoji(
                           fontSize: 24,
                         ),
@@ -142,6 +129,7 @@ class DiaryDetailPage extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: 8),
+                // Title of the diary entry
                 Text(
                   title,
                   style: TextStyle(
@@ -153,6 +141,7 @@ class DiaryDetailPage extends StatelessWidget {
                 ),
                 SizedBox(height: 8),
                 Divider(height: 30, thickness: 1),
+                // Content of the diary entry
                 Text(
                   content,
                   style: TextStyle(
@@ -162,6 +151,7 @@ class DiaryDetailPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 16),
+                // Display the image if there is one
                 if (imageUrl.isNotEmpty) Image.network(imageUrl),
               ],
             ),

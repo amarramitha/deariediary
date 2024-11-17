@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:deariediary/controller/diary_controller.dart';
@@ -30,7 +31,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   final _contentController = TextEditingController();
   final DiaryController diaryController = Get.put(DiaryController());
   bool _isLoading = false;
-  String? _mood;
+  String? _mood; // Store only emoji here
   File? _imageFile;
   String? _audioFilePath;
   FlutterSoundRecorder? _recorder;
@@ -39,17 +40,27 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   DateTime _selectedDate = DateTime.now();
 
-  final List<Map<String, String>> moods = [
-    {'emoji': '😊', 'label': 'Happy'},
-    {'emoji': '😢', 'label': 'Sad'},
-    {'emoji': '😠', 'label': 'Angry'},
-    {'emoji': '😍', 'label': 'Loved'},
-    {'emoji': '😞', 'label': 'Disappointed'},
-    {'emoji': '😁', 'label': 'Excited'},
-    {'emoji': '😌', 'label': 'Relaxed'},
-    {'emoji': '😖', 'label': 'Stressed'},
-    {'emoji': '😭', 'label': 'Crying'},
-    {'emoji': '😕', 'label': 'Confused'},
+  final List<String> moods = [
+    '😊',
+    '😢',
+    '😠',
+    '😍',
+    '😞',
+    '😁',
+    '😌',
+    '😖',
+    '😭',
+    '😕',
+    '😎',
+    '🤣',
+    '🥳',
+    '😴',
+    '🤒',
+    '🤔',
+    '🥱',
+    '🥴',
+    '🤑',
+    '😮‍💨',
   ];
 
   @override
@@ -73,28 +84,22 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
   Future<void> _pickImage() async {
     if (kIsWeb) {
-      // Image picking for Web (using ImagePickerWeb)
       final pickedFile = await ImagePickerWeb.getImageAsFile();
       if (pickedFile != null) {
         setState(() {
           _imageFile = pickedFile as File?;
         });
-
-        // Upload the image to Firebase Storage
         if (_imageFile != null) {
           await diaryController.uploadImageToFirebase(_imageFile!);
         }
       }
     } else {
-      // Image picking for mobile (using ImagePicker)
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
           _imageFile = File(pickedFile.path);
         });
-
-        // Upload the image to Firebase Storage
         if (_imageFile != null) {
           await diaryController.uploadImageToFirebase(_imageFile!);
         }
@@ -106,7 +111,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     try {
       await _recorder!.startRecorder(toFile: 'audio.m4a');
       setState(() {
-        _audioFilePath = null; // Reset audio file path
+        _audioFilePath = null;
       });
     } catch (e) {
       print("Error starting recorder: $e");
@@ -135,16 +140,20 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
             return GestureDetector(
               onTap: () {
                 setState(() {
-                  _mood = mood['label'];
+                  _mood = mood;
                 });
                 Navigator.pop(context);
               },
               child: Column(
                 children: [
-                  Text(mood['emoji']!,
-                      style: const TextStyle(
-                          fontSize: 30, fontFamily: 'NotoColorEmoji')),
-                  Text(mood['label']!, style: TextStyle(fontSize: 12)),
+                  Text(
+                    mood,
+                    style: GoogleFonts.notoColorEmoji(
+                      textStyle: const TextStyle(
+                        fontSize: 30,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -164,52 +173,48 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
 
     if (picked != null && picked != selectedDate) {
       setState(() {
-        selectedDate = picked; // Update the selected date
+        selectedDate = picked;
       });
     }
   }
 
   Future<void> saveDiaryEntry() async {
-    if (!_formKey.currentState!.validate()) return; // Validate form fields
-    setState(() => _isLoading = true); // Show loading indicator
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
     try {
-      // Use selectedDate directly as it is already a DateTime
-      DateTime selectedDateToSave = selectedDate; // This is already DateTime
+      DateTime selectedDateToSave = selectedDate;
 
       if (widget.entryId == null) {
-        // Adding new entry
         await diaryController.addDiaryEntry(
           context,
           title: _titleController.text,
           content: _contentController.text,
-          mood: _mood ?? '',
+          mood: _mood ?? '', // Save only emoji to database
           image: _imageFile,
           audioFilePath: _audioFilePath,
-          date: selectedDateToSave, // Pass as DateTime
+          date: selectedDateToSave,
         );
       } else {
-        // Updating existing entry
         await diaryController.updateDiaryEntry(
           entryId: widget.entryId!,
           title: _titleController.text,
           content: _contentController.text,
-          mood: _mood ?? '',
+          mood: _mood ?? '', // Save only emoji to database
           image: _imageFile,
           audioFilePath: _audioFilePath,
-          date: selectedDateToSave, // Pass as DateTime
+          date: selectedDateToSave,
           context: context,
         );
       }
 
-      Get.offAll(() => DashboardDiary()); // Navigate to Dashboard after saving
+      Get.offAll(() => DashboardDiary());
     } catch (e) {
-      // Display error message if saving fails
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save diary entry: $e')),
       );
     } finally {
-      setState(() => _isLoading = false); // Hide loading indicator
+      setState(() => _isLoading = false);
     }
   }
 
@@ -231,7 +236,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Form(
-            key: _formKey, // Add form key here
+            key: _formKey,
             child: Column(
               children: [
                 Row(
@@ -272,7 +277,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                     ),
                     child: Column(
                       children: [
-                        // Title TextFormField
                         TextFormField(
                           controller: _titleController,
                           decoration: InputDecoration(
@@ -287,8 +291,6 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           },
                         ),
                         SizedBox(height: 30),
-
-                        // Content TextFormField
                         Expanded(
                           child: TextFormField(
                             controller: _contentController,
@@ -306,11 +308,10 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                             },
                           ),
                         ),
-
                         SizedBox(height: 10),
                         if (_imageFile != null)
                           Image.file(
-                            _imageFile!, // Display the picked image file
+                            _imageFile!,
                             height: 150,
                           ),
                         SizedBox(height: 10),
@@ -318,8 +319,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           children: [
                             IconButton(
                               icon: Icon(Icons.image, size: 30),
-                              onPressed:
-                                  _pickImage, // Trigger the image picking
+                              onPressed: _pickImage,
                             ),
                           ],
                         ),
