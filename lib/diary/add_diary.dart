@@ -4,23 +4,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:deariediary/controller/diary_controller.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dashboard_diary.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'dart:io';
 import 'package:image_picker_web/image_picker_web.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:typed_data';
 
 class AddDiaryPage extends StatefulWidget {
   final String? entryId;
   final String? existingTitle;
   final String? existingContent;
 
-  AddDiaryPage({
-    this.entryId,
-    this.existingTitle,
-    this.existingContent,
-  });
+  AddDiaryPage({this.entryId, this.existingTitle, this.existingContent});
 
   @override
   _AddDiaryPageState createState() => _AddDiaryPageState();
@@ -31,14 +30,13 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   final _contentController = TextEditingController();
   final DiaryController diaryController = Get.put(DiaryController());
   bool _isLoading = false;
-  String? _mood; // Store only emoji here
-  File? _imageFile;
+  String? _mood;
+  List<File>? _imageFiles = [];
+  List<Uint8List>? _imageBytesList = [];
   String? _audioFilePath;
   FlutterSoundRecorder? _recorder;
   DateTime selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
-
-  DateTime _selectedDate = DateTime.now();
 
   final List<String> moods = [
     '😊',
@@ -82,116 +80,86 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<String?> uploadImageToFirebase(File imageFile) async {
+    try {
+      final storageRef = FirebaseStorage.instance.ref();
+      final fileName =
+          'diary_images/${DateTime.now().millisecondsSinceEpoch}.png';
+      final fileRef = storageRef.child(fileName);
+
+      await fileRef.putFile(imageFile);
+
+      final imageUrl = await fileRef.getDownloadURL();
+      print('Image uploaded: $imageUrl');
+      return imageUrl;
+    } catch (e) {
+      print('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  Future<void> _pickImages() async {
     if (kIsWeb) {
-      final pickedFile = await ImagePickerWeb.getImageAsFile();
-      if (pickedFile != null) {
+      // Picking multiple images on the web
+      final List<Uint8List>? pickedImages = await ImagePickerWeb.pickImages();
+
+      if (pickedImages != null && pickedImages.isNotEmpty) {
         setState(() {
-          _imageFile = pickedFile as File?;
+          _imageBytesList =
+              pickedImages; // _imageBytesList should be a List<Uint8List>
+          _imageFiles = []; // Reset the mobile-specific list if necessary
         });
-        if (_imageFile != null) {
-          await diaryController.uploadImageToFirebase(_imageFile!);
-        }
       }
     } else {
+      // Use ImagePicker for mobile (android/ios) devices
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
+      final pickedFiles = await picker.pickMultiImage();
+
+      if (pickedFiles != null && pickedFiles.isNotEmpty) {
         setState(() {
-          _imageFile = File(pickedFile.path);
+          _imageFiles =
+              pickedFiles.map((pickedFile) => File(pickedFile.path)).toList();
+          _imageBytesList = []; // Reset the web-specific list if necessary
         });
-        if (_imageFile != null) {
-          await diaryController.uploadImageToFirebase(_imageFile!);
-        }
       }
     }
   }
 
-  Future<void> _startRecording() async {
-    try {
-      await _recorder!.startRecorder(toFile: 'audio.m4a');
-      setState(() {
-        _audioFilePath = null;
-      });
-    } catch (e) {
-      print("Error starting recorder: $e");
-    }
-  }
-
-  Future<void> _stopRecording() async {
-    try {
-      final path = await _recorder!.stopRecorder();
-      setState(() {
-        _audioFilePath = path;
-      });
-    } catch (e) {
-      print("Error stopping recorder: $e");
-    }
-  }
-
-  Future<void> _selectMood(BuildContext context) async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Bagaimana moodmu hari ini?'),
-        content: Wrap(
-          spacing: 16,
-          children: moods.map((mood) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _mood = mood;
-                });
-                Navigator.pop(context);
-              },
-              child: Column(
-                children: [
-                  Text(
-                    mood,
-                    style: GoogleFonts.notoColorEmoji(
-                      textStyle: const TextStyle(
-                        fontSize: 30,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2025),
-    );
-
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> saveDiaryEntry() async {
+  Future<void> saveDiaryEntry(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
 
     try {
       DateTime selectedDateToSave = selectedDate;
 
+      // Upload all images and get their URLs
+      List<String> imageUrls = [];
+      if (_imageFiles != null && _imageFiles!.isNotEmpty) {
+        for (var imageFile in _imageFiles!) {
+          String? imageUrl = await uploadImageToFirebase(imageFile);
+          if (imageUrl != null) {
+            imageUrls.add(imageUrl);
+          }
+        }
+      } else if (_imageBytesList != null && _imageBytesList!.isNotEmpty) {
+        for (var imageBytes in _imageBytesList!) {
+          final file = await _createFileFromBytes(imageBytes);
+          String? imageUrl = await uploadImageToFirebase(file);
+          if (imageUrl != null) {
+            imageUrls.add(imageUrl);
+          }
+        }
+      }
+
+      // Save diary entry with multiple image URLs
       if (widget.entryId == null) {
         await diaryController.addDiaryEntry(
           context,
           title: _titleController.text,
           content: _contentController.text,
-          mood: _mood ?? '', // Save only emoji to database
-          image: _imageFile,
+          mood: _mood ?? '',
+          imageUrls: imageUrls, // Pass the list of image URLs
           audioFilePath: _audioFilePath,
           date: selectedDateToSave,
         );
@@ -200,8 +168,8 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           entryId: widget.entryId!,
           title: _titleController.text,
           content: _contentController.text,
-          mood: _mood ?? '', // Save only emoji to database
-          image: _imageFile,
+          mood: _mood ?? '',
+          imageUrls: imageUrls, // Pass the list of image URLs
           audioFilePath: _audioFilePath,
           date: selectedDateToSave,
           context: context,
@@ -218,6 +186,20 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     }
   }
 
+  Future<File> _createFileFromBytes(Uint8List bytes) async {
+    if (kIsWeb) {
+      final file = File('${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(bytes);
+      return file;
+    } else {
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+          '${tempDir.path}/image_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(bytes);
+      return file;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,7 +209,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.save),
-            onPressed: saveDiaryEntry,
+            onPressed: () => saveDiaryEntry(context),
           ),
         ],
       ),
@@ -249,89 +231,122 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                           icon: Icon(Icons.calendar_today),
                         ),
                         Text(
-                          DateFormat('yMMMd').format(_selectedDate),
+                          DateFormat('yyyy-MM-dd').format(selectedDate),
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        if (_mood != null) Text('Mood: $_mood'),
-                        IconButton(
-                          onPressed: () => _selectMood(context),
-                          icon: Icon(Icons.emoji_emotions),
-                        ),
-                      ],
+                    IconButton(
+                      onPressed: () => _selectMood(context),
+                      icon: Icon(Icons.sentiment_satisfied_alt),
                     ),
                   ],
                 ),
-                Card(
-                  color: Colors.pink[50],
-                  margin: EdgeInsets.zero,
-                  child: Container(
-                    width: double.infinity,
-                    height: MediaQuery.of(context).size.height,
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _titleController,
-                          decoration: InputDecoration(
-                            labelText: 'Title',
-                            border: InputBorder.none,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a title';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 30),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _contentController,
-                            decoration: InputDecoration(
-                              labelText: 'Content',
-                              border: InputBorder.none,
-                            ),
-                            keyboardType: TextInputType.multiline,
-                            maxLines: null,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter some content';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        if (_imageFile != null)
-                          Image.file(
-                            _imageFile!,
-                            height: 150,
-                          ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.image, size: 30),
-                              onPressed: _pickImage,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                SizedBox(height: 8),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
                   ),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter a title' : null,
                 ),
+                SizedBox(height: 8),
+                TextFormField(
+                  controller: _contentController,
+                  decoration: InputDecoration(
+                    labelText: 'Content',
+                  ),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter content' : null,
+                  maxLines: 6,
+                ),
+                SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _pickImages,
+                  child: _imageFiles!.isEmpty && _imageBytesList!.isEmpty
+                      ? Container(
+                          width: double.infinity,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.add_a_photo),
+                          ),
+                        )
+                      : Column(
+                          children: _imageFiles!
+                              .map(
+                                (file) => Image.file(
+                                  file,
+                                  height: 100,
+                                  width: 100,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+                SizedBox(height: 8),
+                _isLoading
+                    ? CircularProgressIndicator()
+                    : ElevatedButton(
+                        onPressed: () => saveDiaryEntry(context),
+                        child: Text(widget.entryId == null
+                            ? 'Add Entry'
+                            : 'Update Entry'),
+                      ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  // Function to select date
+  Future<void> _selectDate(BuildContext context) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
+  // Function to select mood
+  Future<void> _selectMood(BuildContext context) async {
+    final selectedMood = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select Mood'),
+        content: GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+          ),
+          itemCount: moods.length,
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop(moods[index]);
+              },
+              child: Center(
+                  child: Text(moods[index], style: TextStyle(fontSize: 30))),
+            );
+          },
+        ),
+      ),
+    );
+
+    if (selectedMood != null) {
+      setState(() {
+        _mood = selectedMood;
+      });
+    }
   }
 }

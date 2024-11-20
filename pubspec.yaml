@@ -51,6 +51,8 @@ dependencies:
   google_fonts: ^6.2.1
   path_provider: ^2.1.5
   fl_chart: ^0.69.0
+  supabase_flutter: ^2.8.1
+  html: ^0.15.5
 
 
 dev_dependencies:

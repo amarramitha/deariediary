@@ -36,31 +36,7 @@ class DiaryDetailPage extends StatelessWidget {
               if (result == 'edit') {
                 Get.to(() => EditDiaryPage(entryId: entryId));
               } else if (result == 'delete') {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Delete Diary Entry'),
-                      content:
-                          Text('Are you sure you want to delete this entry?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            controller.deleteDiaryEntry(context, entryId);
-                            Navigator.pop(context);
-                          },
-                          child: Text('Delete'),
-                        ),
-                      ],
-                    );
-                  },
-                );
+                _showDeleteDialog(context, controller);
               }
             },
             itemBuilder: (BuildContext context) {
@@ -158,6 +134,35 @@ class DiaryDetailPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Method to show the delete confirmation dialog
+  void _showDeleteDialog(BuildContext context, DiaryController controller) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Diary Entry'),
+          content: Text('Are you sure you want to delete this entry?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await controller.deleteDiaryEntry(entryId);
+                Navigator.pop(context); // Close the dialog
+                Get.back(); // Go back to the previous page after deletion
+              },
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:html' as html; // Hanya untuk platform web
+import 'package:flutter/foundation.dart'; // Untuk kIsWeb
 
 class EditProfile extends StatefulWidget {
   final String bio;
@@ -19,90 +23,167 @@ class _EditProfileState extends State<EditProfile> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ImagePicker _picker = ImagePicker();
-  File? _imageFile;
-  TextEditingController _bioController = TextEditingController();
-  TextEditingController _nameController = TextEditingController();
+  html.File? _webImageFile; // For web
+  String? _mobileImagePath; // For mobile
+  late TextEditingController _bioController;
+  late TextEditingController _nameController;
+  String _profileImageUrl = '';
 
   @override
   void initState() {
     super.initState();
-    _bioController.text = widget.bio;
+    _bioController = TextEditingController(text: widget.bio);
+    _nameController = TextEditingController();
     _loadUserData();
   }
 
+  @override
+  void dispose() {
+    _bioController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserData() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      // Fetch data from Firestore
-      final docSnapshot =
-          await _firestore.collection('users').doc(user.uid).get();
-      if (docSnapshot.exists) {
-        final data = docSnapshot.data();
-        if (data != null) {
-          setState(() {
-            _nameController.text =
-                data['name'] ?? ''; // Ensure name is retrieved here
-            _bioController.text = data['bio'] ?? ''; // Ensure bio is retrieved
-          });
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final docSnapshot =
+            await _firestore.collection('users').doc(user.uid).get();
+        if (docSnapshot.exists) {
+          final data = docSnapshot.data();
+          if (data != null) {
+            setState(() {
+              _nameController.text = data['name'] ?? '';
+              _bioController.text = data['bio'] ?? '';
+              _profileImageUrl =
+                  data['photoURL'] ?? ''; // Load the profile picture URL
+            });
+          }
         }
       }
-    }
-  }
-
-  Future<String> _getUserProfilePicture() async {
-    User? user = _auth.currentUser;
-    if (user?.photoURL != null) {
-      return user!.photoURL!;
-    }
-    return 'https://www.example.com/default-profile.jpg'; // Default image URL
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+    } catch (e) {
+      print('Error fetching user data: $e');
     }
   }
 
   Future<void> _uploadProfilePicture() async {
-    if (_imageFile != null) {
+    if (_mobileImagePath == null && _webImageFile == null) return;
+
+    try {
       final user = _auth.currentUser;
-      final fileName = 'profile_${user!.uid}.jpg';
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('profile_pictures')
-          .child(fileName);
-      await storageRef.putFile(_imageFile!);
-      final downloadURL = await storageRef.getDownloadURL();
+      if (user == null) throw Exception('User tidak ditemukan.');
+
+      final fileName = 'profile_${user.uid}.jpg';
+      final storageRef =
+          FirebaseStorage.instance.ref().child('profile_pictures/$fileName');
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+
+      UploadTask uploadTask;
+      if (_mobileImagePath != null) {
+        final file = File(_mobileImagePath!);
+        uploadTask = storageRef.putFile(file, metadata);
+      } else {
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(_webImageFile!);
+        await reader.onLoad.first;
+        final bytes = reader.result as Uint8List;
+        uploadTask = storageRef.putData(bytes, metadata);
+      }
+
+      final snapshot = await uploadTask;
+      final downloadURL = await snapshot.ref.getDownloadURL();
+
       await user.updatePhotoURL(downloadURL);
-      await _firestore.collection('users').doc(user.uid).update({
-        'photoURL': downloadURL,
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .update({'photoURL': downloadURL});
+
+      setState(() {
+        _profileImageUrl = downloadURL; // Update the local image URL
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Foto profil berhasil diperbarui!')));
+    } catch (e) {
+      print('Error saat mengunggah foto: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal unggah foto: $e')));
     }
   }
 
-  Future<void> _updateUserData() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      final fullName = _nameController.text; // Use the single name field
-      await user.updateDisplayName(fullName);
+  Future<void> _pickImage() async {
+    try {
+      if (kIsWeb) {
+        final pickedFile = await _pickImageWeb();
+        if (pickedFile != null) {
+          setState(() {
+            _webImageFile = pickedFile;
+            _mobileImagePath = null;
+          });
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Foto berhasil dipilih!')));
+        }
+      } else {
+        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+        if (pickedFile != null) {
+          setState(() {
+            _mobileImagePath = pickedFile.path;
+            _webImageFile = null;
+          });
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Foto berhasil dipilih!')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Tidak ada foto yang dipilih!')));
+        }
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+    }
+  }
 
-      // Update Firestore data
-      await _firestore.collection('users').doc(user.uid).set({
-        'name': _nameController.text, // Ensure this is properly set
-        'bio': _bioController.text,
-      }, SetOptions(merge: true)); // Merges with existing data
+  Future<html.File?> _pickImageWeb() async {
+    final completer = Completer<html.File?>();
+    try {
+      final html.FileUploadInputElement input = html.FileUploadInputElement();
+      input.accept = 'image/*';
+      input.click();
+      input.onChange.listen((e) async {
+        final files = input.files;
+        if (files!.isEmpty) {
+          completer.complete(null);
+        } else {
+          final file = files[0];
+          completer.complete(file);
+        }
+      });
+    } catch (e) {
+      print('Error picking image in web: $e');
+      completer.completeError(e);
+    }
+    return completer.future;
+  }
+
+  Future<void> _updateUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.updateDisplayName(_nameController.text);
+        await _firestore.collection('users').doc(user.uid).set({
+          'name': _nameController.text,
+          'bio': _bioController.text,
+          'photoURL': _profileImageUrl,
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      print('Error updating user data: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final User? user = _auth.currentUser;
-    final String? userEmail = user?.email;
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Edit Profil'),
@@ -116,83 +197,29 @@ class _EditProfileState extends State<EditProfile> {
             Center(
               child: GestureDetector(
                 onTap: _pickImage,
-                child: FutureBuilder<String>(
-                  future: _getUserProfilePicture(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey.shade300,
-                        child: CircularProgressIndicator(),
-                      );
-                    } else if (snapshot.hasError || !snapshot.hasData) {
-                      return CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey.shade300,
-                        child: Icon(Icons.error, color: Colors.red),
-                      );
-                    } else {
-                      return CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _imageFile != null
-                            ? FileImage(_imageFile!)
-                            : NetworkImage(snapshot.data!) as ImageProvider,
-                        child: _imageFile == null
-                            ? Icon(Icons.add_a_photo,
-                                color: Colors.white, size: 30)
-                            : null,
-                      );
-                    }
-                  },
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundImage: _profileImageUrl.isNotEmpty
+                      ? NetworkImage(_profileImageUrl)
+                      : AssetImage('assets/default_profile_image.jpg')
+                          as ImageProvider,
+                  child: (_mobileImagePath == null && _webImageFile == null)
+                      ? Icon(Icons.add_a_photo, color: Colors.white, size: 30)
+                      : null,
                 ),
               ),
             ),
             SizedBox(height: 20),
-            Text(
-              'Nama',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Jakarta'),
-            ),
-            SizedBox(height: 4),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                hintText: 'Masukkan Nama',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            _buildTextField('Nama', _nameController, 'Masukkan Nama'),
             SizedBox(height: 20),
-            Text(
-              'Bio',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Jakarta'),
-            ),
-            SizedBox(height: 4),
-            TextField(
-              controller: _bioController,
-              decoration: InputDecoration(
-                hintText: 'Masukkan Perkenalan',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: null,
-            ),
+            _buildTextField('Bio', _bioController, 'Masukkan Perkenalan',
+                maxLines: null),
             SizedBox(height: 30),
-            Text(
-              'Email',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Jakarta'),
-            ),
+            Text('Email',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 4),
-            Text(
-              userEmail ?? 'Email tidak tersedia',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
+            Text(_auth.currentUser?.email ?? 'Email tidak tersedia',
+                style: TextStyle(fontSize: 16, color: Colors.grey)),
             SizedBox(height: 30),
             Center(
               child: ElevatedButton(
@@ -202,24 +229,25 @@ class _EditProfileState extends State<EditProfile> {
                   await _uploadProfilePicture();
                   Navigator.pop(context);
                 },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  backgroundColor: Colors.pink.shade100,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  'Simpan',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Jakarta'),
-                ),
+                child: Text('Simpan Perubahan'),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+      String label, TextEditingController controller, String hint,
+      {int? maxLines}) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines ?? 1,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: OutlineInputBorder(),
       ),
     );
   }

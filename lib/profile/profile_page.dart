@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
 import 'edit_profile.dart';
 
@@ -14,6 +15,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _quoteOfTheDay = '';
   String _name = 'Nama Pengguna';
   String _bio = 'Setiap hari memberikan hadiahnya masing-masing.';
+  String _profileImageUrl = ''; // Variabel untuk menyimpan URL foto profil
   List<int> _weeklyMoodData = [0, 0, 0, 0];
 
   final List<String> quotes = [
@@ -28,7 +30,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _quoteOfTheDay = getQuoteOfTheDay();
-    _fetchUserData();
+    _fetchUserData(); // Memperbaiki pemanggilan fungsi
     _fetchMoodData();
   }
 
@@ -41,19 +43,46 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
+        // Ambil data pengguna dari Firestore (hanya untuk nama dan bio)
         DocumentSnapshot userData = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
+
+        print("User Name: ${userData['name']}"); // Debugging data nama
+        print("User Bio: ${userData['bio']}"); // Debugging data bio
 
         setState(() {
           _name = userData['name'] ?? 'Nama Pengguna';
           _bio = userData['bio'] ??
               'Setiap hari memberikan hadiahnya masing-masing.';
         });
+
+        // Ambil URL foto profil dari Firebase Storage
+        String photoURL = await _getProfileImageUrl(user.uid);
+        print("Profile Image URL: $photoURL"); // Debugging URL foto profil
+        setState(() {
+          _profileImageUrl = photoURL;
+        });
       }
     } catch (e) {
       print("Error fetching user data: $e");
+    }
+  }
+
+  Future<String> _getProfileImageUrl(String userId) async {
+    try {
+      // Menyusun path file di Firebase Storage
+      Reference photoRef =
+          FirebaseStorage.instance.ref().child('profile_pictures/$userId.jpg');
+
+      // Mendapatkan URL unduhan file
+      String photoURL = await photoRef.getDownloadURL();
+
+      return photoURL; // Mengembalikan URL unduhan gambar
+    } catch (e) {
+      print("Error fetching profile image URL: $e");
+      return ''; // Jika terjadi error, kembalikan string kosong
     }
   }
 
@@ -123,8 +152,12 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         CircleAvatar(
           radius: 40,
-          backgroundColor: Colors.grey[300],
-          child: Icon(Icons.person, size: 40, color: Colors.white),
+          backgroundImage: _profileImageUrl.isNotEmpty
+              ? NetworkImage(_profileImageUrl)
+              : null,
+          child: _profileImageUrl.isEmpty
+              ? Icon(Icons.person, size: 40, color: Colors.white)
+              : null,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -199,26 +232,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildMoodChart() {
-    // Uncomment to use a line chart instead of a list-based chart
-    /*
-    return LineChart(
-      LineChartData(
-        titlesData: FlTitlesData(show: true),
-        lineBarsData: [
-          LineChartBarData(
-            spots: List.generate(
-              _weeklyMoodData.length,
-              (index) => FlSpot(index.toDouble(), _weeklyMoodData[index].toDouble()),
-            ),
-            isCurved: true,
-            barWidth: 4,
-            colors: [Colors.pinkAccent],
-          ),
-        ],
-      ),
-    );
-    */
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -259,18 +272,15 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(week,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          Row(
-            children: [
-              Text(moodEmoji, style: TextStyle(fontSize: 24)),
-              SizedBox(width: 8),
-              Text('$moodLevel/5',
-                  style: TextStyle(
-                      color: moodColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16)),
-            ],
+          Text(week, style: TextStyle(fontSize: 16)),
+          Text(moodEmoji, style: TextStyle(fontSize: 20)),
+          Container(
+            width: 150,
+            height: 6,
+            decoration: BoxDecoration(
+              color: moodColor,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ],
       ),
@@ -281,12 +291,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return ElevatedButton(
       onPressed: _logout,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.pink[200],
-        minimumSize: Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.pink[300],
+        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
       ),
-      child: Text('Logout',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      child: Text('Logout'),
     );
   }
 
