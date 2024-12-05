@@ -18,16 +18,6 @@ class _AddPostPageState extends State<AddPostPage> {
 
   final PostController _postControllerInstance = Get.put(PostController());
 
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _selectedImage = image;
-      });
-    }
-  }
-
   Future<void> _savePost() async {
     if (_postController.text.isEmpty && _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,7 +97,7 @@ class _AddPostPageState extends State<AddPostPage> {
               child: TextField(
                 controller: _postController,
                 decoration: InputDecoration(
-                  hintText: "What's on your mind?",
+                  hintText: "Yuk tuangkan sambatanmu disini!",
                   alignLabelWithHint: true, // Keeps hint aligned to the top
 
                   contentPadding: EdgeInsets.only(
@@ -125,15 +115,6 @@ class _AddPostPageState extends State<AddPostPage> {
                 File(_selectedImage!.path),
                 height: 150,
               ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.image, size: 30),
-                  onPressed: _pickImage,
-                ),
-              ],
-            ),
           ],
         ),
       ),

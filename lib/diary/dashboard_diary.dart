@@ -1,5 +1,4 @@
 import 'package:deariediary/feeds/add_post.dart';
-import 'package:deariediary/feeds/post_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:deariediary/feeds/post_feed.dart';
@@ -19,28 +18,9 @@ class DashboardDiary extends StatelessWidget {
     ProfilePage(), // Mengirimkan name ke ProfilePage
   ];
 
-  final List<String> _titles = [
-    'Diary',
-    'Sambat',
-    'Mood Tracker',
-    'Profile',
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight),
-        child: Obx(() {
-          return AppBar(
-            title: Text(
-              _titles[dashboardController.selectedIndex.value],
-              style: TextStyle(fontFamily: 'Jakartamedium'),
-            ),
-            backgroundColor: const Color.fromARGB(255, 255, 185, 210),
-          );
-        }),
-      ),
       body: Obx(() {
         return IndexedStack(
           index: dashboardController.selectedIndex.value,
@@ -51,7 +31,7 @@ class DashboardDiary extends StatelessWidget {
         return BottomNavigationBar(
           currentIndex: dashboardController.selectedIndex.value,
           onTap: dashboardController.changePage,
-          selectedItemColor: Colors.blue,
+          selectedItemColor: const Color.fromARGB(255, 240, 183, 202),
           unselectedItemColor: Colors.grey,
           items: const [
             BottomNavigationBarItem(
@@ -72,19 +52,6 @@ class DashboardDiary extends StatelessWidget {
             ),
           ],
         );
-      }),
-      floatingActionButton: Obx(() {
-        if (dashboardController.selectedIndex.value == 1) {
-          return FloatingActionButton(
-            onPressed: () {
-              Get.to(
-                  AddPostPage()); // Menavigasi ke halaman pembuatan postingan
-            },
-            child: Icon(Icons.add),
-          );
-        }
-        return SizedBox
-            .shrink(); // Tidak menampilkan FAB jika bukan di halaman Post Feed
       }),
     );
   }

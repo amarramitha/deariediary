@@ -10,7 +10,7 @@ class DiaryDetailPage extends StatelessWidget {
   final String content;
   final DateTime timestamp;
   final String mood;
-  final String imageUrl;
+
   final String entryId;
 
   const DiaryDetailPage({
@@ -19,7 +19,6 @@ class DiaryDetailPage extends StatelessWidget {
     required this.content,
     required this.timestamp,
     required this.mood,
-    required this.imageUrl,
     required this.entryId,
   }) : super(key: key);
 
@@ -68,13 +67,15 @@ class DiaryDetailPage extends StatelessWidget {
       ),
       body: Container(
         color: Colors.pink[50],
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(
+            0), // Remove any extra padding from the container
         child: Card(
           color: Colors.pink[50],
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          margin: EdgeInsets.zero, // Ensure the Card fills the screen width
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -126,9 +127,6 @@ class DiaryDetailPage extends StatelessWidget {
                     fontFamily: 'Jakarta',
                   ),
                 ),
-                SizedBox(height: 16),
-                // Display the image if there is one
-                if (imageUrl.isNotEmpty) Image.network(imageUrl),
               ],
             ),
           ),
@@ -154,9 +152,17 @@ class DiaryDetailPage extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
+                // Delete the diary entry
                 await controller.deleteDiaryEntry(entryId);
-                Navigator.pop(context); // Close the dialog
-                Get.back(); // Go back to the previous page after deletion
+
+                // Close the dialog
+                Navigator.pop(context);
+
+                // Navigate to home page and refresh it
+                Get.offAllNamed(
+                    '/home'); // Use the correct route name for the home page
+                Get.find<DiaryController>()
+                    .fetchDiaryEntries(); // Refresh the home page if necessary
               },
               child: Text('Delete'),
             ),

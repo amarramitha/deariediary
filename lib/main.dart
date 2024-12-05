@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:deariediary/diary/dashboard_diary.dart';
-import 'package:deariediary/login.dart';
-import 'package:deariediary/splash_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart'; // Make sure this is imported
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart'; // Import GetX

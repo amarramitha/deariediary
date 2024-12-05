@@ -1,40 +1,27 @@
-import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:deariediary/routes/routes.dart';
-import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'file_upload_controller.dart';
-
-final firebase_storage.FirebaseStorage _storage =
-    firebase_storage.FirebaseStorage.instanceFor(
-  bucket:
-      'gs://deariediary-b53a4.firebasestorage.app', // Replace with your custom bucket URL
-);
 
 class DiaryController extends GetxController {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FileUploadController _fileUploadController = FileUploadController();
 
   final titleController = TextEditingController();
   final contentController = TextEditingController();
-  File? imageFile;
   String? selectedMood;
   DateTime? date;
 
   var diaryEntries = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
 
+  firebase_auth.User? get currentUser => _auth.currentUser;
+
   @override
   void onReady() {
     super.onReady();
     fetchDiaryEntries(); // Load diary entries when the page is ready
   }
-
-  firebase_auth.User? get currentUser => _auth.currentUser;
 
   // Fetch diary entries from Firestore
   Future<void> fetchDiaryEntries() async {
@@ -55,8 +42,6 @@ class DiaryController extends GetxController {
             'title': data['title'],
             'content': data['content'],
             'mood': data['mood'],
-            'image': data['image'],
-            'audio': data['audio'],
             'date': (data['date'] as Timestamp).toDate(),
           };
         }).toList();
@@ -69,116 +54,26 @@ class DiaryController extends GetxController {
     }
   }
 
-  // Upload a file (image or audio) to Firebase Storage
-  Future<Map<String, String?>> _uploadFiles({
-    File? image,
-    String? audioFilePath,
-  }) async {
-    Map<String, String?> fileUrls = {};
-
-    if (image != null) {
-      fileUrls['image'] = await _uploadFile(
-        image,
-        'images/${currentUser!.uid}/diary_images/${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-    }
-
-    if (audioFilePath != null) {
-      fileUrls['audio'] = await _uploadFile(
-        File(audioFilePath),
-        'audio/${currentUser!.uid}/diary_audio/${DateTime.now().millisecondsSinceEpoch}.m4a',
-      );
-    }
-
-    return fileUrls;
-  }
-
-  Future<String?> _uploadFile(File file, String filePath) async {
-    try {
-      final ref = _storage.ref().child(filePath);
-      final uploadTask = ref.putFile(file);
-      await uploadTask.whenComplete(() => null); // Wait for upload to complete
-      return await ref.getDownloadURL();
-    } catch (e) {
-      print("File upload error: $e");
-      Get.snackbar("Upload Error", "Failed to upload file: $e",
-          snackPosition: SnackPosition.BOTTOM);
-      return null;
-    }
-  }
-
-  // Method to add a new diary entry
+  // Add a new diary entry
   Future<void> addDiaryEntry(
     BuildContext context, {
     required String title,
     required String content,
     required String mood,
-    File? image,
-    String? audioFilePath,
     DateTime? date,
-    String? imageUrl,
-  }) async {
-    await saveDiaryEntry(
-      title: title,
-      content: content,
-      mood: mood,
-      image: image,
-      audioFilePath: audioFilePath,
-      date: date ?? DateTime.now(), // Use current date if null
-    );
-    await fetchDiaryEntries(); // Refresh diary entries after adding
-  }
-
-  // Method to update an existing diary entry
-  Future<void> updateDiaryEntry({
-    required String entryId,
-    required String title,
-    required String content,
-    required String mood,
-    File? image,
-    String? audioFilePath,
-    required DateTime date,
-    required BuildContext context,
-    required String imageUrl,
-  }) async {
-    await saveDiaryEntry(
-      entryId: entryId,
-      title: title,
-      content: content,
-      mood: mood,
-      image: image,
-      audioFilePath: audioFilePath,
-      date: date,
-    );
-    await fetchDiaryEntries(); // Refresh diary entries after update
-  }
-
-  // Save or update diary entry
-  Future<void> saveDiaryEntry({
-    String? entryId,
-    required String title,
-    required String content,
-    String? mood,
-    File? image,
-    String? audioFilePath,
-    required DateTime date,
   }) async {
     if (currentUser == null) {
-      throw Exception('User is not authenticated');
+      Get.snackbar("Error", "User is not authenticated");
+      return;
     }
 
     try {
-      final fileUrls =
-          await _uploadFiles(image: image, audioFilePath: audioFilePath);
-
       final entryData = {
         'title': title,
         'content': content,
         'mood': mood,
-        'image': fileUrls['image'], // Image URL
-        'audio': fileUrls['audio'], // Audio URL
+        'date': date ?? DateTime.now(), // Use current date if null
         'timestamp': FieldValue.serverTimestamp(),
-        'date': date, // Store original date
       };
 
       final diaryCollection = _db
@@ -186,19 +81,56 @@ class DiaryController extends GetxController {
           .doc(currentUser!.uid)
           .collection('diary_entries');
 
-      if (entryId == null) {
-        // Add new entry
-        await diaryCollection.add(entryData);
-      } else {
-        // Update existing entry
-        await diaryCollection.doc(entryId).update(entryData);
+      final newDoc = await diaryCollection.add(entryData);
+      diaryEntries.insert(0, {'id': newDoc.id, ...entryData});
+
+      Get.snackbar("Success", "Diary entry added successfully!");
+    } catch (e) {
+      print("Error adding diary entry: $e");
+      Get.snackbar("Error", "Failed to add diary entry");
+    }
+  }
+
+  // Update an existing diary entry
+  Future<void> updateDiaryEntry(
+    BuildContext context, {
+    required String entryId,
+    required String title,
+    required String content,
+    required String mood,
+    DateTime? date,
+  }) async {
+    if (currentUser == null) {
+      Get.snackbar("Error", "User is not authenticated");
+      return;
+    }
+
+    try {
+      final entryData = {
+        'title': title,
+        'content': content,
+        'mood': mood,
+        'date': date ?? DateTime.now(), // Gunakan tanggal sekarang jika null
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      await _db
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('diary_entries')
+          .doc(entryId)
+          .update(entryData); // Update entry di Firestore
+
+      // Perbarui diaryEntries di lokal (untuk UI)
+      final index = diaryEntries.indexWhere((entry) => entry['id'] == entryId);
+      if (index != -1) {
+        diaryEntries[index] = {'id': entryId, ...entryData};
       }
 
-      Get.snackbar("Success", "Diary entry saved successfully!");
-      Get.offAllNamed(AppRoutes.home); // Navigate to home after saving
+      Get.snackbar("Success", "Diary entry updated successfully!");
     } catch (e) {
-      print("Error saving diary entry: $e");
-      Get.snackbar("Error", "Failed to save diary entry: $e");
+      print("Error updating diary entry: $e");
+      Get.snackbar("Error", "Failed to update diary entry");
     }
   }
 
@@ -219,8 +151,7 @@ class DiaryController extends GetxController {
 
       diaryEntries.removeWhere((entry) => entry['id'] == entryId);
       Get.snackbar("Success", "Diary entry deleted successfully!");
-      await fetchDiaryEntries(); // Refresh entries after deletion
-      Get.offAllNamed(AppRoutes.home); // Navigate to home after deletion
+      await fetchDiaryEntries();
     } catch (e) {
       print("Error deleting diary entry: $e");
       Get.snackbar("Error", "Failed to delete diary entry");

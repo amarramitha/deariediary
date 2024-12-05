@@ -7,11 +7,9 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 class PostController extends GetxController {
-  // Reactive list to hold posts
   var posts = <DocumentSnapshot>[].obs;
-
-  // Status loading
   var isLoading = false.obs;
+  var _userProfileUrl = ''.obs; // Reactive variable for user profile URL
 
   @override
   void onInit() {
@@ -19,7 +17,6 @@ class PostController extends GetxController {
     fetchPosts(); // Fetch posts when the controller is initialized
   }
 
-  // Function to fetch posts from Firestore
   Future<void> fetchPosts() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -29,13 +26,12 @@ class PostController extends GetxController {
 
     try {
       isLoading.value = true;
-      // Get posts from Firestore and update the posts list
       var snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('posts')
           .orderBy('createdAt', descending: true)
-          .get(); // Use get() instead of snapshots() for a one-time fetch
+          .get();
 
       posts.value = snapshot.docs; // Update the reactive posts list
     } catch (e) {
@@ -45,7 +41,6 @@ class PostController extends GetxController {
     }
   }
 
-  // Function to add a post
   Future<void> addPost(String content, XFile? image) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -56,7 +51,6 @@ class PostController extends GetxController {
     String? imageUrl;
     if (image != null) {
       try {
-        // Upload image to Firebase Storage
         final storageRef =
             FirebaseStorage.instance.ref().child('posts/${image.name}');
         await storageRef.putFile(File(image.path));
@@ -68,14 +62,13 @@ class PostController extends GetxController {
     }
 
     try {
-      // Save post data to Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('posts')
           .add({
         'content': content,
-        'imageUrl': imageUrl, // Save image URL if image is provided
+        'imageUrl': imageUrl,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -86,7 +79,6 @@ class PostController extends GetxController {
     }
   }
 
-  // Function to edit a post
   Future<void> editPost(String postId, String newContent) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -103,7 +95,6 @@ class PostController extends GetxController {
           .get();
 
       if (postDoc.exists) {
-        // Update the content of the post
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -124,7 +115,6 @@ class PostController extends GetxController {
     }
   }
 
-  // Function to delete a post
   Future<void> deletePost(String postId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -141,7 +131,6 @@ class PostController extends GetxController {
           .get();
 
       if (postDoc.exists) {
-        // Delete the post from Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -158,4 +147,13 @@ class PostController extends GetxController {
       Get.snackbar('Error', 'Gagal menghapus postingan: $e');
     }
   }
+
+  // Update the profile URL in the controller
+  void updateUserData(String newProfileUrl) {
+    _userProfileUrl.value = newProfileUrl;
+    fetchPosts(); // Refresh posts to reflect the new profile URL
+  }
+
+  // Getter for profile URL
+  String get userProfileUrl => _userProfileUrl.value;
 }

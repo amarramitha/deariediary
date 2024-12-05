@@ -1,31 +1,24 @@
-allprojects {
+// Root-level build.gradle
+buildscript {
     repositories {
-        google()
-        mavenCentral()
+        google() // Menambahkan Google repository
+        mavenCentral() // Menambahkan Maven Central repository
+    }
+    dependencies {
+        // Menambahkan classpath untuk Android Gradle Plugin dan Google Services Plugin
+        classpath 'com.android.tools.build:gradle:7.0.4'  // Sesuaikan dengan versi yang digunakan
+        classpath 'com.google.gms:google-services:4.3.10'  // Plugin untuk integrasi dengan Firebase dan Google services
     }
 }
 
-rootProject.buildDir = "../build"
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+allprojects {
+    repositories {
+        google() // Menambahkan Google repository
+        mavenCentral() // Menambahkan Maven Central repository
+    }
 }
 
+// Menambahkan task untuk membersihkan build
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
-}
-
-dependencies {
-  // Import the BoM for the Firebase platform
-  implementation platform('com.google.firebase:firebase-bom:33.5.1')
-
-  // Declare the dependencies for the desired Firebase products without specifying versions
-  // For example, declare the dependencies for Firebase Authentication and Cloud Firestore
-  implementation 'com.google.firebase:firebase-auth'
-  implementation 'com.google.firebase:firebase-firestore'
-
-  implementation("com.google.firebase:firebase-auth")
-   implementation("com.google.android.gms:play-services-auth:21.2.0")
 }

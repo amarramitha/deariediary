@@ -1,42 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:deariediary/diary/dashboard_diary.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:deariediary/controller/diary_controller.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dashboard_diary.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'dart:io';
-import 'package:image_picker_web/image_picker_web.dart';
-import 'package:flutter/foundation.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:typed_data';
 
 class AddDiaryPage extends StatefulWidget {
   final String? entryId;
   final String? existingTitle;
   final String? existingContent;
 
-  AddDiaryPage({this.entryId, this.existingTitle, this.existingContent});
+  const AddDiaryPage({
+    this.entryId,
+    this.existingTitle,
+    this.existingContent,
+    Key? key,
+  }) : super(key: key);
 
   @override
-  _AddDiaryPageState createState() => _AddDiaryPageState();
+  State<AddDiaryPage> createState() => _AddDiaryPageState();
 }
 
 class _AddDiaryPageState extends State<AddDiaryPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final DiaryController diaryController = Get.put(DiaryController());
+  final _formKey = GlobalKey<FormState>();
+
   bool _isLoading = false;
   String? _mood;
-  List<File>? _imageFiles = [];
-  List<Uint8List>? _imageBytesList = [];
-  String? _audioFilePath;
-  FlutterSoundRecorder? _recorder;
+  String? selectedMoodEmoji;
   DateTime selectedDate = DateTime.now();
-  final _formKey = GlobalKey<FormState>();
 
   final List<String> moods = [
     '😊',
@@ -64,115 +59,34 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   @override
   void initState() {
     super.initState();
-    _recorder = FlutterSoundRecorder();
+
     if (widget.entryId != null) {
       _titleController.text = widget.existingTitle ?? '';
       _contentController.text = widget.existingContent ?? '';
     }
-    _initializeRecorder();
   }
 
-  Future<void> _initializeRecorder() async {
-    try {
-      await _recorder!.openRecorder();
-    } catch (e) {
-      print("Error opening audio session: $e");
-    }
-  }
-
-  Future<String?> uploadImageToFirebase(File imageFile) async {
-    try {
-      final storageRef = FirebaseStorage.instance.ref();
-      final fileName =
-          'diary_images/${DateTime.now().millisecondsSinceEpoch}.png';
-      final fileRef = storageRef.child(fileName);
-
-      await fileRef.putFile(imageFile);
-
-      final imageUrl = await fileRef.getDownloadURL();
-      print('Image uploaded: $imageUrl');
-      return imageUrl;
-    } catch (e) {
-      print('Error uploading image: $e');
-      return null;
-    }
-  }
-
-  Future<void> _pickImages() async {
-    if (kIsWeb) {
-      // Picking multiple images on the web
-      final List<Uint8List>? pickedImages = await ImagePickerWeb.pickImages();
-
-      if (pickedImages != null && pickedImages.isNotEmpty) {
-        setState(() {
-          _imageBytesList =
-              pickedImages; // _imageBytesList should be a List<Uint8List>
-          _imageFiles = []; // Reset the mobile-specific list if necessary
-        });
-      }
-    } else {
-      // Use ImagePicker for mobile (android/ios) devices
-      final picker = ImagePicker();
-      final pickedFiles = await picker.pickMultiImage();
-
-      if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        setState(() {
-          _imageFiles =
-              pickedFiles.map((pickedFile) => File(pickedFile.path)).toList();
-          _imageBytesList = []; // Reset the web-specific list if necessary
-        });
-      }
-    }
-  }
-
-  Future<void> saveDiaryEntry(BuildContext context) async {
+  Future<void> _saveDiaryEntry(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     try {
-      DateTime selectedDateToSave = selectedDate;
-
-      // Upload all images and get their URLs
-      List<String> imageUrls = [];
-      if (_imageFiles != null && _imageFiles!.isNotEmpty) {
-        for (var imageFile in _imageFiles!) {
-          String? imageUrl = await uploadImageToFirebase(imageFile);
-          if (imageUrl != null) {
-            imageUrls.add(imageUrl);
-          }
-        }
-      } else if (_imageBytesList != null && _imageBytesList!.isNotEmpty) {
-        for (var imageBytes in _imageBytesList!) {
-          final file = await _createFileFromBytes(imageBytes);
-          String? imageUrl = await uploadImageToFirebase(file);
-          if (imageUrl != null) {
-            imageUrls.add(imageUrl);
-          }
-        }
-      }
-
-      // Save diary entry with multiple image URLs
       if (widget.entryId == null) {
         await diaryController.addDiaryEntry(
           context,
           title: _titleController.text,
           content: _contentController.text,
           mood: _mood ?? '',
-          imageUrls: imageUrls, // Pass the list of image URLs
-          audioFilePath: _audioFilePath,
-          date: selectedDateToSave,
+          date: selectedDate,
         );
       } else {
         await diaryController.updateDiaryEntry(
+          context,
           entryId: widget.entryId!,
           title: _titleController.text,
           content: _contentController.text,
           mood: _mood ?? '',
-          imageUrls: imageUrls, // Pass the list of image URLs
-          audioFilePath: _audioFilePath,
-          date: selectedDateToSave,
-          context: context,
+          date: selectedDate,
         );
       }
 
@@ -186,17 +100,69 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
     }
   }
 
-  Future<File> _createFileFromBytes(Uint8List bytes) async {
-    if (kIsWeb) {
-      final file = File('${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-      return file;
-    } else {
-      final tempDir = await getTemporaryDirectory();
-      final file = File(
-          '${tempDir.path}/image_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-      return file;
+  Future<void> _selectDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectMood(BuildContext context) async {
+    final selectedMood = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Bagaimana mood kamu hari ini?'),
+          content: SizedBox(
+            width: double.maxFinite, // Pastikan dialog menyesuaikan lebar layar
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4, // Jumlah kolom dalam grid
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: moods.length,
+              itemBuilder: (BuildContext gridContext, int index) {
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.of(dialogContext)
+                        .pop(moods[index]); // Menutup dialog
+                  },
+                  child: Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        moods[index],
+                        style: GoogleFonts.notoColorEmoji(
+                            fontSize: 30), // Font emoji
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selectedMood != null) {
+      setState(() {
+        selectedMoodEmoji = selectedMood;
+        _mood = selectedMood;
+      });
+      debugPrint("Mood terpilih: $_mood");
     }
   }
 
@@ -204,22 +170,28 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(''),
         backgroundColor: Colors.pink[50],
         actions: [
           IconButton(
-            icon: Icon(Icons.save),
-            onPressed: () => saveDiaryEntry(context),
+            icon: const Icon(Icons.save),
+            onPressed: () => _saveDiaryEntry(context),
           ),
         ],
       ),
-      backgroundColor: Colors.pink[50],
-      body: SingleChildScrollView(
+      body: Card(
+        color: Colors.pink[50], // Background warna pink untuk Card utama
+        margin: EdgeInsets.zero, // Card memenuhi seluruh halaman
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero, // Tidak ada border radius
+        ),
+        elevation: 0, // Hilangkan bayangan agar rata
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(16.0),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start, // Semua elemen rata kiri
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -228,125 +200,52 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                       children: [
                         IconButton(
                           onPressed: () => _selectDate(context),
-                          icon: Icon(Icons.calendar_today),
+                          icon: const Icon(Icons.calendar_today),
                         ),
-                        Text(
-                          DateFormat('yyyy-MM-dd').format(selectedDate),
-                        ),
+                        Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
                       ],
                     ),
-                    IconButton(
-                      onPressed: () => _selectMood(context),
-                      icon: Icon(Icons.sentiment_satisfied_alt),
+                    GestureDetector(
+                      onTap: () => _selectMood(context),
+                      child: Text(
+                        selectedMoodEmoji ?? '😊', // Menampilkan emoji mood
+                        style: GoogleFonts.notoColorEmoji(
+                            fontSize: 30), // Ukuran emoji mood
+                      ),
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Title',
+                  decoration: const InputDecoration(
+                    hintText: 'Bagaimana hari kamu?',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(fontFamily: 'Jakarta'),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Please enter a title' : null,
+                      value?.isEmpty == true ? 'Please enter a title' : null,
+                  style: const TextStyle(fontFamily: 'Jakarta'),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _contentController,
-                  decoration: InputDecoration(
-                    labelText: 'Content',
+                  decoration: const InputDecoration(
+                    hintText: 'Yuk bagikan ceritamu disini!',
+                    border: InputBorder.none, // Hapus garis bawah
+                    alignLabelWithHint: true,
+                    hintStyle: TextStyle(fontFamily: 'Jakarta'),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? 'Please enter content' : null,
+                      value?.isEmpty == true ? 'Please enter content' : null,
                   maxLines: 6,
+                  style: const TextStyle(fontFamily: 'Jakarta'),
                 ),
-                SizedBox(height: 8),
-                GestureDetector(
-                  onTap: _pickImages,
-                  child: _imageFiles!.isEmpty && _imageBytesList!.isEmpty
-                      ? Container(
-                          width: double.infinity,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
-                          ),
-                          child: Center(
-                            child: Icon(Icons.add_a_photo),
-                          ),
-                        )
-                      : Column(
-                          children: _imageFiles!
-                              .map(
-                                (file) => Image.file(
-                                  file,
-                                  height: 100,
-                                  width: 100,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                SizedBox(height: 8),
-                _isLoading
-                    ? CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: () => saveDiaryEntry(context),
-                        child: Text(widget.entryId == null
-                            ? 'Add Entry'
-                            : 'Update Entry'),
-                      ),
               ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  // Function to select date
-  Future<void> _selectDate(BuildContext context) async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
-    }
-  }
-
-  // Function to select mood
-  Future<void> _selectMood(BuildContext context) async {
-    final selectedMood = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Select Mood'),
-        content: GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-          ),
-          itemCount: moods.length,
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop(moods[index]);
-              },
-              child: Center(
-                  child: Text(moods[index], style: TextStyle(fontSize: 30))),
-            );
-          },
-        ),
-      ),
-    );
-
-    if (selectedMood != null) {
-      setState(() {
-        _mood = selectedMood;
-      });
-    }
   }
 }

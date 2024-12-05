@@ -10,7 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 class DiaryPage extends StatelessWidget {
   final DiaryController diaryController = Get.put(DiaryController());
 
-  // List of emojis without mood labels
   final List<String> moodEmojis = [
     '😊',
     '😢',
@@ -34,7 +33,6 @@ class DiaryPage extends StatelessWidget {
     '😮‍💨',
   ];
 
-  // Define color for each emoji index (you can adjust accordingly)
   final List<Color> emojiColors = [
     Colors.yellow,
     Colors.blue,
@@ -61,14 +59,14 @@ class DiaryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0x64F6DADA),
       body: Obx(() {
         if (diaryController.isLoading.value) {
           return Center(child: CircularProgressIndicator());
         }
 
-        // No diary entries available
         if (diaryController.diaryEntries.isEmpty) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -80,125 +78,142 @@ class DiaryPage extends StatelessWidget {
           );
         }
 
-        // Display diary entries
-        return ListView.builder(
-          itemCount: diaryController.diaryEntries.length,
-          itemBuilder: (context, index) {
-            final entry = diaryController.diaryEntries[index];
-
-            final date = entry['date'] as DateTime? ?? DateTime.now();
-            final formattedDay = DateFormat('d').format(date);
-            final formattedMonth = DateFormat('MMM').format(date);
-
-            String mood = entry['mood'] ?? 'neutral';
-
-            // Ensure valid index for emojis and colors
-            int moodIndex = moodEmojis.indexWhere((emoji) => emoji == mood);
-            if (moodIndex == -1)
-              moodIndex = 0; // Default to first emoji if no match
-            String moodEmoji = moodEmojis[moodIndex];
-            Color emojiColor = emojiColors[moodIndex];
-
-            return GestureDetector(
-              onTap: () {
-                Get.to(() => DiaryDetailPage(
-                      title: entry['title'] ?? 'No Title',
-                      content: entry['content'] ?? 'No Content',
-                      timestamp: date,
-                      mood: entry['mood'] ?? 'No Mood',
-                      imageUrl: entry['image'] ?? '',
-                      entryId: entry['id'] ?? '',
-                    ));
-              },
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.pink[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            formattedDay,
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                              fontFamily: 'Jakarta',
-                            ),
-                          ),
-                          Text(
-                            formattedMonth,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry['title'] ?? 'Untitled',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                                fontFamily: 'Jakarta',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              entry['content'] ?? '',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black87,
-                                fontFamily: 'Jakarta',
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      RichText(
-                          text: TextSpan(
-                        text: moodEmoji,
-                        style: GoogleFonts.notoColorEmoji(
-                          textStyle: TextStyle(
-                            fontSize: 24,
-                            color: emojiColor, // Color based on the mood
-                          ),
-                        ),
-                      )),
-                    ],
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              // Fixed Image at the top
+              Container(
+                width: double.infinity,
+                height: 250, // Adjust height as needed
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(
+                        'images/homepage.jpg'), // Change to your image asset
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-            );
-          },
+              const SizedBox(
+                  height: 20), // Space between image and diary entries
+
+              // Scrollable Diary Entries
+              ListView.builder(
+                shrinkWrap:
+                    true, // Ensures list is scrollable within the SingleChildScrollView
+                itemCount: diaryController.diaryEntries.length,
+                itemBuilder: (context, index) {
+                  final entry = diaryController.diaryEntries[index];
+                  final date = entry['date'] as DateTime? ?? DateTime.now();
+                  final formattedDay = DateFormat('d').format(date);
+                  final formattedMonth = DateFormat('MMM').format(date);
+
+                  String mood = entry['mood'] ?? 'neutral';
+
+                  int moodIndex =
+                      moodEmojis.indexWhere((emoji) => emoji == mood);
+                  if (moodIndex == -1) moodIndex = 0;
+                  String moodEmoji = moodEmojis[moodIndex];
+                  Color emojiColor = emojiColors[moodIndex];
+
+                  return GestureDetector(
+                    onTap: () {
+                      Get.to(() => DiaryDetailPage(
+                            title: entry['title'] ?? 'No Title',
+                            content: entry['content'] ?? 'No Content',
+                            timestamp: date,
+                            mood: entry['mood'] ?? 'No Mood',
+                            entryId: entry['id'] ?? '',
+                          ));
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.pink[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  formattedDay,
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                    fontFamily: 'Jakarta',
+                                  ),
+                                ),
+                                Text(
+                                  formattedMonth,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    entry['title'] ?? 'Untitled',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      fontFamily: 'Jakarta',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    entry['content'] ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black87,
+                                      fontFamily: 'Jakarta',
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            RichText(
+                                text: TextSpan(
+                              text: moodEmoji,
+                              style: GoogleFonts.notoColorEmoji(
+                                textStyle: TextStyle(
+                                  fontSize: 24,
+                                  color: emojiColor,
+                                ),
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         );
       }),
-
-      // Floating action button to add a new diary entry
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Get.to(() => AddDiaryPage());
         },
         child: Icon(Icons.add),
         backgroundColor: const Color.fromARGB(255, 240, 183, 202),
-        tooltip: 'Add Diary Entry',
       ),
     );
   }

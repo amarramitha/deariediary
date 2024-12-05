@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart'; // To select photos from the gallery or camera
-import 'dart:io';
-import 'package:get/get.dart'; // Import GetX for navigation
-import 'package:firebase_storage/firebase_storage.dart'; // For Firebase Storage
+import 'package:get/get.dart';
+import 'package:deariediary/controller/diary_controller.dart';
+import 'package:intl/intl.dart'; // Import for DateFormat
+import 'package:google_fonts/google_fonts.dart';
 
 class EditDiaryPage extends StatefulWidget {
-  final String entryId; // ID entri diary yang akan diedit
+  final String entryId;
 
   EditDiaryPage({required this.entryId});
 
@@ -16,232 +14,214 @@ class EditDiaryPage extends StatefulWidget {
 }
 
 class _EditDiaryPageState extends State<EditDiaryPage> {
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
-  bool _isLoading = false;
-  File? _imageFile;
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
   String? _selectedMood;
+  DateTime? _selectedDate;
+
+  final List<String> moodList = [
+    '😊',
+    '😢',
+    '😠',
+    '😍',
+    '😞',
+    '😁',
+    '😌',
+    '😖',
+    '😭',
+    '😕',
+    '😎',
+    '🤣',
+    '🥳',
+    '😴',
+    '🤒',
+    '🤔',
+    '🥱',
+    '🥴',
+    '🤑',
+    '😮‍💨'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadDiaryEntry();
-  }
-
-  // Fungsi untuk mengambil data entri diary yang akan diedit
-  Future<void> _loadDiaryEntry() async {
-    try {
-      DocumentSnapshot docSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('diary_entries')
-          .doc(widget.entryId)
-          .get();
-
-      if (docSnapshot.exists) {
-        _titleController.text = docSnapshot['title'];
-        _contentController.text = docSnapshot['content'];
-        _selectedMood = docSnapshot['mood']; // Loading the current mood
-        // If there is a photo URL, you can load it here
-        // You may need to handle the image URL retrieval and display accordingly
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to load diary entry: $e'),
-      ));
-    }
-  }
-
-  // Fungsi untuk upload image to Firebase Storage
-  Future<String> _uploadImage(File imageFile) async {
-    try {
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('diary_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await storageRef.putFile(imageFile);
-      return await storageRef.getDownloadURL(); // Get the image URL
-    } catch (e) {
-      throw Exception('Failed to upload image: $e');
-    }
-  }
-
-  // Fungsi untuk menyimpan perubahan entri diary
-  Future<void> _saveEditedDiaryEntry() async {
-    if (_titleController.text.isEmpty ||
-        _contentController.text.isEmpty ||
-        _selectedMood == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Title, content, and mood cannot be empty!'),
-      ));
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Upload the image to Firebase Storage and get the image URL (if selected)
-      String? imageUrl;
-      if (_imageFile != null) {
-        imageUrl = await _uploadImage(_imageFile!);
-      }
-
-      // Directly update the diary entry in Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('diary_entries')
-          .doc(widget.entryId)
-          .update({
-        'title': _titleController.text,
-        'content': _contentController.text,
-        'mood': _selectedMood,
-        'imageUrl': imageUrl ?? '', // Save the image URL if available
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Diary entry updated successfully!'),
-      ));
-
-      // After successful update, navigate back to the DiaryPage using GetX
-      Get.offNamed('home');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to update diary entry: $e'),
-      ));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Fungsi untuk membatalkan perubahan dan kembali
-  void _cancelEditing() {
-    Get.back(); // Use GetX to go back
-  }
-
-  // Fungsi untuk memilih gambar
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery); // Choose from gallery
-
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
-  }
-
-  // Fungsi untuk memilih mood
-  void _selectMood(String? mood) {
-    setState(() {
-      _selectedMood = mood;
-    });
+    final controller = Get.find<DiaryController>();
+    final entry = controller.diaryEntries
+        .firstWhere((entry) => entry['id'] == widget.entryId);
+    _titleController.text = entry['title'];
+    _contentController.text = entry['content'];
+    _selectedMood = entry['mood'];
+    _selectedDate = entry['date'];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Diary Entry"),
+        backgroundColor: Colors.pink[50],
         actions: [
           IconButton(
-            icon: Icon(Icons.cancel),
-            onPressed: _cancelEditing, // Tombol Batal
-          )
+            icon: Icon(Icons.save),
+            onPressed: () {
+              // Save the changes
+              final controller = Get.find<DiaryController>();
+              controller.updateDiaryEntry(
+                context,
+                entryId: widget.entryId, // Make sure to send entryId
+                title: _titleController.text,
+                content: _contentController.text,
+                mood: _selectedMood ??
+                    '😊', // Default to smile if no mood selected
+                date: _selectedDate,
+              );
+              Get.offAllNamed('/home'); // Go back to the home page
+              controller
+                  .fetchDiaryEntries(); // Refresh the diary entries after saving
+            },
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        // Make the entire body scrollable
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title TextField
-              TextField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: "Title",
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Content TextField
-              TextField(
-                controller: _contentController,
-                decoration: InputDecoration(
-                  labelText: "Content",
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                maxLines: 10,
-              ),
-              SizedBox(height: 10),
-
-              // Mood Selector (Dropdown)
-              DropdownButton<String>(
-                value: _selectedMood,
-                hint: Text('Select Mood'),
-                onChanged: _selectMood,
-                items: ['Happy', 'Sad', 'Neutral']
-                    .map((mood) => DropdownMenuItem<String>(
-                          value: mood,
-                          child: Text(mood),
-                        ))
-                    .toList(),
-              ),
-              SizedBox(height: 10),
-
-              // Display selected image (if any)
-              _imageFile != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        _imageFile!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: 200,
+      body: Container(
+        color: Colors.pink[50],
+        padding: const EdgeInsets.all(0),
+        child: Card(
+          color: Colors.pink[50],
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Date display with formatting
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2101),
+                        );
+                        if (pickedDate != null && pickedDate != _selectedDate) {
+                          setState(() {
+                            _selectedDate = pickedDate;
+                          });
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today, color: Colors.grey[600]),
+                          SizedBox(width: 8),
+                          Text(
+                            DateFormat('yyyy-MM-dd')
+                                .format(_selectedDate ?? DateTime.now()),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : Text("No image selected"),
-
-              // Button to pick an image
-              TextButton(
-                onPressed: _pickImage,
-                child: Text("Choose Photo"),
-              ),
-              SizedBox(height: 20),
-
-              // Buttons for Save and Cancel
-              Row(
-                children: [
-                  _isLoading
-                      ? CircularProgressIndicator()
-                      : ElevatedButton(
-                          onPressed: _saveEditedDiaryEntry,
-                          child: Text("Save Changes"),
-                        ),
-                  SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _cancelEditing,
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                    child: Text("Cancel"),
+                    ),
+                    // Mood emoji selector with a pop-up
+                    GestureDetector(
+                      onTap: () {
+                        _showMoodSelector(context);
+                      },
+                      child: Text(
+                        _selectedMood ??
+                            '😊', // Default to a smile if no mood is selected
+                        style: GoogleFonts.notoColorEmoji(fontSize: 24),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                // Title input field without a border
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    hintText: 'Bagaimana harimu?',
+                    border: InputBorder.none, // No border
                   ),
-                ],
-              ),
-            ],
+                ),
+                SizedBox(height: 16),
+                // Content input field without a border
+                TextField(
+                  controller: _contentController,
+                  maxLines: 5,
+                  decoration: InputDecoration(
+                    hintText: 'Yuk bagikan ceritamu disini!',
+                    border: InputBorder.none, // No border
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  // Function to show mood selector in a grid pop-up
+  void _showMoodSelector(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Bagaimana mood kamu?',
+            style: TextStyle(
+              fontSize: 18,
+              fontFamily: 'Jakarta',
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: moodList.length,
+              itemBuilder: (BuildContext gridContext, int index) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedMood = moodList[index]; // Update selected mood
+                    });
+                    Navigator.of(gridContext)
+                        .pop(); // Close dialog after selection
+                  },
+                  child: Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        moodList[index],
+                        style: GoogleFonts.notoColorEmoji(fontSize: 30),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
