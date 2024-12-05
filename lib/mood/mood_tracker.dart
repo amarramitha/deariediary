@@ -10,19 +10,18 @@ class MoodTrackerPage extends StatefulWidget {
 }
 
 class _MoodTrackerPageState extends State<MoodTrackerPage> {
-  Map<DateTime, String> _selectedMoods = {}; // Stores mood by date
+  Map<DateTime, String> _selectedMoods = {};
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _loadMoodsFromFirestore(); // Load moods from Firestore
+    _loadMoodsFromFirestore();
   }
 
   String? get userId => FirebaseAuth.instance.currentUser?.uid;
 
-  // Load mood data from Firestore
   Future<void> _loadMoodsFromFirestore() async {
     if (userId == null) return;
     try {
@@ -30,7 +29,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
           .collection('users')
           .doc(userId)
           .collection('diary_entries')
-          .orderBy('date', descending: true) // Sort by date
+          .orderBy('date', descending: true)
           .get();
 
       setState(() {
@@ -44,7 +43,6 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     }
   }
 
-  // Get the mood for a particular date
   String? _getMoodForDate(DateTime date) {
     for (DateTime key in _selectedMoods.keys) {
       if (isSameDay(key, date)) {
@@ -54,10 +52,19 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
     return null;
   }
 
-  // Count moods
+  // Filter moods for the current month
+  Map<DateTime, String> _getMoodsForMonth() {
+    return Map.fromEntries(_selectedMoods.entries.where((entry) {
+      return entry.key.month == _focusedDay.month &&
+          entry.key.year == _focusedDay.year;
+    }));
+  }
+
+  // Count moods for the current month
   Map<String, int> _getMoodCount() {
     Map<String, int> moodCount = {};
-    _selectedMoods.values.forEach((mood) {
+    final monthlyMoods = _getMoodsForMonth();
+    monthlyMoods.values.forEach((mood) {
       moodCount[mood] = (moodCount[mood] ?? 0) + 1;
     });
     return moodCount;
@@ -85,6 +92,11 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                     _focusedDay = focusedDay;
                   });
                 },
+                onPageChanged: (focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                  });
+                },
                 calendarBuilders: CalendarBuilders(
                   defaultBuilder: (context, date, _) => _buildDay(date),
                   todayBuilder: (context, date, _) =>
@@ -93,8 +105,8 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                       _buildDay(date, isSelected: true),
                 ),
                 headerStyle: HeaderStyle(
-                  formatButtonVisible: false, // Remove format button
-                  titleCentered: true, // Center the month title
+                  formatButtonVisible: false,
+                  titleCentered: true,
                 ),
                 daysOfWeekStyle: DaysOfWeekStyle(
                   weekdayStyle:
@@ -158,7 +170,7 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Mood Statistics:',
+            'Statistik Mood:',
             style: TextStyle(
               fontSize: 18,
               fontFamily: 'Jakartamedium',
@@ -180,7 +192,6 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                   Expanded(
                     child: Stack(
                       children: [
-                        // Background bar
                         Container(
                           height: 20,
                           decoration: BoxDecoration(
@@ -188,13 +199,12 @@ class _MoodTrackerPageState extends State<MoodTrackerPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        // Foreground bar
                         FractionallySizedBox(
                           widthFactor: entry.value / maxCount,
                           child: Container(
                             height: 20,
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 204, 125, 184),
+                              color: Colors.pink[100],
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),

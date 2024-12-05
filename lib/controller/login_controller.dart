@@ -15,8 +15,8 @@ class LoginController extends GetxController {
   Future<void> login() async {
     if (email.value.isEmpty || password.value.isEmpty) {
       Get.snackbar(
-        'Login Failed',
-        'Please enter both email and password.',
+        'Gagal masuk',
+        'Masukan email dan password',
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red[200],
         colorText: Colors.white,
@@ -40,11 +40,9 @@ class LoginController extends GetxController {
 
       // Display a success notification
       Get.snackbar(
-        'Login Success',
-        'Welcome, $userName!',
+        'Berhasil',
+        'Halo, $userName!',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.blue[200],
-        colorText: Colors.white,
       );
 
       // Navigate to the home page after successful login
@@ -52,8 +50,8 @@ class LoginController extends GetxController {
     } catch (e) {
       // Display an error notification on login failure
       Get.snackbar(
-        'Login Error',
-        'Incorrect email or password',
+        'Gagal Masuk',
+        'Email atau password salah',
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.red,
         colorText: Colors.white,

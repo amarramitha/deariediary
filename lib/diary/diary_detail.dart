@@ -56,7 +56,7 @@ class DiaryDetailPage extends StatelessWidget {
                     children: [
                       Icon(Icons.delete, color: Colors.black),
                       SizedBox(width: 8),
-                      Text('Delete'),
+                      Text('Hapus'),
                     ],
                   ),
                 ),
@@ -141,14 +141,14 @@ class DiaryDetailPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Delete Diary Entry'),
-          content: Text('Are you sure you want to delete this entry?'),
+          title: Text('Hapus Diary'),
+          content: Text('Apakah diarynya ingin dihapus?'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context); // Close the dialog
               },
-              child: Text('Cancel'),
+              child: Text('Batal'),
             ),
             TextButton(
               onPressed: () async {
@@ -164,7 +164,7 @@ class DiaryDetailPage extends StatelessWidget {
                 Get.find<DiaryController>()
                     .fetchDiaryEntries(); // Refresh the home page if necessary
               },
-              child: Text('Delete'),
+              child: Text('Hapus'),
             ),
           ],
         );

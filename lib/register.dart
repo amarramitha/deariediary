@@ -64,7 +64,7 @@ class _RegisterState extends State<Register> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          color: Colors.pink[100],
+          color: Colors.pink[50],
         ),
         child: Center(
           child: SingleChildScrollView(
@@ -138,7 +138,7 @@ class _RegisterState extends State<Register> {
                       ),
                     ),
                     child: Text(
-                      'Register',
+                      'Daftar',
                       style: TextStyle(
                         fontFamily: 'Jakarta',
                         color: Colors.white,
@@ -167,7 +167,7 @@ class _RegisterState extends State<Register> {
                           Login()); // Use Get.to() to navigate to the login screen
                     },
                     child: Text(
-                      "Login",
+                      "Masuk",
                       style: TextStyle(
                         fontFamily: 'Jakarta',
                         color: Colors.pink[800],

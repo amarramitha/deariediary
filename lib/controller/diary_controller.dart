@@ -84,10 +84,10 @@ class DiaryController extends GetxController {
       final newDoc = await diaryCollection.add(entryData);
       diaryEntries.insert(0, {'id': newDoc.id, ...entryData});
 
-      Get.snackbar("Success", "Diary entry added successfully!");
+      Get.snackbar("Berhasil", "Diary berhasil ditambahkan!");
     } catch (e) {
       print("Error adding diary entry: $e");
-      Get.snackbar("Error", "Failed to add diary entry");
+      Get.snackbar("Gagal", "Diary gagal ditambahkan!");
     }
   }
 
@@ -127,10 +127,10 @@ class DiaryController extends GetxController {
         diaryEntries[index] = {'id': entryId, ...entryData};
       }
 
-      Get.snackbar("Success", "Diary entry updated successfully!");
+      Get.snackbar("Berhasil", "Diary berhasil diubah!");
     } catch (e) {
       print("Error updating diary entry: $e");
-      Get.snackbar("Error", "Failed to update diary entry");
+      Get.snackbar("Gagal", "Diary gagal diubah!");
     }
   }
 
@@ -150,11 +150,11 @@ class DiaryController extends GetxController {
           .delete();
 
       diaryEntries.removeWhere((entry) => entry['id'] == entryId);
-      Get.snackbar("Success", "Diary entry deleted successfully!");
+      Get.snackbar("Berhasil", "Diary berhasil dihapus!");
       await fetchDiaryEntries();
     } catch (e) {
       print("Error deleting diary entry: $e");
-      Get.snackbar("Error", "Failed to delete diary entry");
+      Get.snackbar("Gagal", "Diary gagal dihapus!");
     }
   }
 }

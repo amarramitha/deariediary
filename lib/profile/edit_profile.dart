@@ -27,22 +27,26 @@ class _EditProfileState extends State<EditProfile> {
 
   final List<String> _avatars = [
     'images/avatar1.jpg',
-    'images/avatar2.jpg', // Add more avatars
-    'images/avatar3.jpg', // Add more avatars
-    'images/avatar4.jpg', // Add more avatars
-    'images/avatar5.jpg', // Add more avatars
-    'images/avatar6.jpg', // Add more avatars
-    'images/avatar7.jpg', // Add more avatars
-    'images/avatar8.jpg', // Add more avatars
-    'images/avatar9.jpg', // Add more avatars
-    'images/avatar10.jpg', // Add more avatars
-    'images/avatar11.jpg', // Add more avatars
-    'images/avatar12.jpg', // Add more avatars
-    'images/avatar13.jpg', // Add more avatars
-    'images/avatar14.jpg', // Add more avatars
-    'images/avatar15.jpg', // Add more avatars
-    'images/avatar16.jpg', // Add more avatars
-    'images/avatar17.jpg', // Add more avatars
+    'images/avatar2.jpg',
+    'images/avatar3.jpg',
+    'images/avatar4.jpg',
+    'images/avatar5.jpg',
+    'images/avatar6.jpg',
+    'images/avatar7.jpg',
+    'images/avatar8.jpg',
+    'images/avatar9.jpg',
+    'images/avatar10.jpg',
+    'images/avatar11.jpg',
+    'images/avatar12.jpg',
+    'images/avatar13.jpg',
+    'images/avatar14.jpg',
+    'images/avatar15.jpg',
+    'images/avatar16.jpg',
+    'images/avatar17.jpg',
+    'images/avatar18.jpg',
+    'images/avatar19.jpg',
+    'images/avatar20.jpg',
+    'images/avatar21.jpg',
   ];
 
   @override

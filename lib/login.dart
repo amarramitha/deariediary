@@ -11,7 +11,7 @@ class Login extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          color: Colors.pink[100],
+          color: Colors.pink[50],
         ),
         child: Center(
           child: SingleChildScrollView(
@@ -76,7 +76,7 @@ class Login extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      "Login",
+                      "Masuk",
                       style: TextStyle(
                         fontFamily: 'Jakarta',
                         color: Colors.white,

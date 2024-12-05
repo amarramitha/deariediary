@@ -88,7 +88,7 @@ class DiaryPage extends StatelessWidget {
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage(
-                        'images/homepage.jpg'), // Change to your image asset
+                        'images/homepage.png'), // Change to your image asset
                     fit: BoxFit.cover,
                   ),
                 ),

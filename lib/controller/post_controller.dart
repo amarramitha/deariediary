@@ -72,53 +72,53 @@ class PostController extends GetxController {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      Get.snackbar('Success', 'Post created successfully!');
+      Get.snackbar('Berhasil', 'Postingan berhasil ditambahkan!');
       fetchPosts(); // Refresh posts after creating a new post
     } catch (e) {
-      Get.snackbar('Error', 'Gagal menyimpan postingan: $e');
+      Get.snackbar('Gagal', 'Gagal menyimpan postingan: $e');
     }
   }
 
-  Future<void> editPost(String postId, String newContent) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      Get.snackbar('Error', 'Pengguna belum login');
-      return;
-    }
+  // Future<void> editPost(String postId, String newContent) async {
+  //   final user = FirebaseAuth.instance.currentUser;
+  //   if (user == null) {
+  //     Get.snackbar('Error', 'Pengguna belum login');
+  //     return;
+  //   }
 
-    try {
-      var postDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('posts')
-          .doc(postId)
-          .get();
+  //   try {
+  //     var postDoc = await FirebaseFirestore.instance
+  //         .collection('users')
+  //         .doc(user.uid)
+  //         .collection('posts')
+  //         .doc(postId)
+  //         .get();
 
-      if (postDoc.exists) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('posts')
-            .doc(postId)
-            .update({
-          'content': newContent,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+  //     if (postDoc.exists) {
+  //       await FirebaseFirestore.instance
+  //           .collection('users')
+  //           .doc(user.uid)
+  //           .collection('posts')
+  //           .doc(postId)
+  //           .update({
+  //         'content': newContent,
+  //         'updatedAt': FieldValue.serverTimestamp(),
+  //       });
 
-        Get.snackbar('Success', 'Post updated successfully!');
-        fetchPosts(); // Refresh posts after editing
-      } else {
-        Get.snackbar('Error', 'Postingan tidak ditemukan');
-      }
-    } catch (e) {
-      Get.snackbar('Error', 'Gagal mengedit postingan: $e');
-    }
-  }
+  //       Get.snackbar('Berhasil', 'Post updated successfully!');
+  //       fetchPosts(); // Refresh posts after editing
+  //     } else {
+  //       Get.snackbar('Error', 'Postingan tidak ditemukan');
+  //     }
+  //   } catch (e) {
+  //     Get.snackbar('Error', 'Gagal mengedit postingan: $e');
+  //   }
+  // }
 
   Future<void> deletePost(String postId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      Get.snackbar('Error', 'Pengguna belum login');
+      Get.snackbar('Gagal', 'Pengguna belum login');
       return;
     }
 
@@ -138,13 +138,13 @@ class PostController extends GetxController {
             .doc(postId)
             .delete();
 
-        Get.snackbar('Success', 'Post deleted successfully!');
+        Get.snackbar('Berhasil', 'Postingan berhasil dihapus!');
         fetchPosts(); // Refresh posts after deletion
       } else {
-        Get.snackbar('Error', 'Postingan tidak ditemukan');
+        Get.snackbar('Gagal', 'Postingan tidak ditemukan');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Gagal menghapus postingan: $e');
+      Get.snackbar('Gagal', 'Gagal menghapus postingan: $e');
     }
   }
 

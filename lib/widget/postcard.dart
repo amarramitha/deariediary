@@ -5,7 +5,7 @@ class PostCard extends StatelessWidget {
   final String? imageUrl;
   final String userName; // Nama pengguna
   final String? userProfileUrl; // URL gambar profil pengguna
-  final Function onEdit;
+
   final Function onDelete;
 
   PostCard({
@@ -13,7 +13,6 @@ class PostCard extends StatelessWidget {
     this.imageUrl,
     required this.userName,
     this.userProfileUrl,
-    required this.onEdit,
     required this.onDelete,
   });
 
@@ -58,21 +57,15 @@ class PostCard extends StatelessWidget {
                   // Menu titik tiga untuk edit dan hapus
                   PopupMenuButton<String>(
                     onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
+                      if (value == 'delete') {
                         onDelete();
                       }
                     },
                     itemBuilder: (BuildContext context) {
                       return [
                         PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
-                        PopupMenuItem<String>(
                           value: 'delete',
-                          child: Text('Delete'),
+                          child: Text('Hapus'),
                         ),
                       ];
                     },
@@ -83,11 +76,6 @@ class PostCard extends StatelessWidget {
               SizedBox(height: 10),
               // Konten post
               Text(postContent, style: TextStyle(fontSize: 16)),
-              SizedBox(height: 10),
-              // Menampilkan gambar jika ada
-              imageUrl != null && imageUrl!.isNotEmpty
-                  ? Image.network(imageUrl!)
-                  : Container(), // Jika tidak ada gambar, tampilkan kosong
             ],
           ),
         ),

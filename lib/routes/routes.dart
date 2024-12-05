@@ -1,4 +1,7 @@
+import 'package:deariediary/bantuan.dart';
+import 'package:deariediary/kebijakan_privasi.dart';
 import 'package:deariediary/register.dart';
+import 'package:deariediary/tentang_kami.dart';
 import 'package:get/get.dart';
 import 'package:deariediary/diary/add_diary.dart';
 import 'package:deariediary/diary/dashboard_diary.dart';
@@ -15,6 +18,9 @@ class AppRoutes {
   static const String addDiary = '/add-diary';
   static const String addPost = '/add-post';
   static const String postFeed = '/post-feed';
+  static const String bantuan = '/bantuan';
+  static const String privasi = '/privasi';
+  static const String about = '/about';
 
   static final routes = [
     GetPage(
@@ -44,6 +50,18 @@ class AppRoutes {
     GetPage(
       name: postFeed,
       page: () => PostFeedPage(),
+    ),
+    GetPage(
+      name: bantuan,
+      page: () => HelpPage(),
+    ),
+    GetPage(
+      name: privasi,
+      page: () => PrivacyPolicyPage(),
+    ),
+    GetPage(
+      name: about,
+      page: () => AboutUsPage(),
     ),
   ];
 }

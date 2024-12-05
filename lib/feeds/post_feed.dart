@@ -53,7 +53,6 @@ class PostFeedPage extends StatelessWidget {
                     postContent: content,
                     userName: userName,
                     userProfileUrl: userProfileUrl,
-                    onEdit: () {},
                     onDelete: () {
                       _postController.deletePost(post.id);
                     },
