@@ -43,11 +43,11 @@ class _RegisterState extends State<Register> {
         });
 
         // Show a success alert after registration
-        Get.snackbar('Registration Success',
-            'Your account has been created successfully!',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.blue[200],
-            colorText: Colors.white);
+        Get.snackbar(
+          'Berhasil',
+          'Akun kamu berhasil dibuat!',
+          snackPosition: SnackPosition.TOP,
+        );
 
         // Navigate to the login screen using GetX
         Get.off(() => Login()); // Replace Navigator.pop() with Get.off()

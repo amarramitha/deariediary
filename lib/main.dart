@@ -22,6 +22,12 @@ class MyApp extends StatelessWidget {
       title: 'Dearie Diary',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        appBarTheme: AppBarTheme(
+          titleTextStyle: TextStyle(
+            fontFamily: 'Jakartamedium',
+            fontSize: 20,
+          ),
+        ),
       ),
       initialRoute: '/splash', // Start with the splash screen route
       getPages: AppRoutes.routes, // Define your routes here

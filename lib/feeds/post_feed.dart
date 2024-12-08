@@ -21,7 +21,7 @@ class PostFeedPage extends StatelessWidget {
         if (_postController.posts.isEmpty) {
           return Center(
             child: Text(
-              'No posts available.',
+              'Ayo keluarkan sambatanmu disini!',
               style: TextStyle(fontFamily: 'Jakarta'),
             ),
           );

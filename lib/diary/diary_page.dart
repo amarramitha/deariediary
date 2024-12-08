@@ -65,19 +65,6 @@ class DiaryPage extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
 
-        if (diaryController.diaryEntries.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.book_outlined, size: 50, color: Colors.grey),
-                SizedBox(height: 10),
-                Text('No diary entries available.'),
-              ],
-            ),
-          );
-        }
-
         return SingleChildScrollView(
           child: Column(
             children: [

@@ -34,10 +34,6 @@ class _AddPostPageState extends State<AddPostPage> {
       await _postControllerInstance.addPost(
           _postController.text, _selectedImage);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Post created successfully!')),
-      );
-
       _postController.clear();
       setState(() {
         _selectedImage = null;
